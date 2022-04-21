@@ -14,5 +14,3 @@ if __name__ == '__main__':
     print_hi('PyCharm')
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
-
-#TODO: init a git repo, list good practice I want to try out (typing, PEP8, testing ...?)
