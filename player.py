@@ -1,19 +1,21 @@
 class Player:
     """
     Class for representing individual players of the game
-    :param name (str)       name of the Player
-    :param character (str)  type of the player, for now str, but can be changed to Enum or some other alternative
+    :param name, str - name of the Player
+    :param character, str - default = HUMAN. Type of the player, for now str, but can be changed to Enum or some other alternative
                             (CHECK options) - this should expect values HUMAN or COMPUTER
                             (later differentiate computer into different kinds of agents, GREEDY, RANDOM etc.)
     """
 
-    def __init__(self, name: str, character: str):
+    def __init__(self, name: str, character: str = 'HUMAN'):
         """
         Constructor method
         """
-        self.name = name
-        self.character = character
-        self.hand = None  # TODO placeholder for cards, once they are dealt, CHECK that this is a correct practice
+        self.name: str = name  # type checking of the input args?
+        self.character: str = character  # type checking of the input args?
+        self.hand: list = []
+        if character != 'HUMAN':
+            raise ValueError("Sofar only human players are supported, other kinds of agents will be implemented later")
 
     def __repr__(self):
         """

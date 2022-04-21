@@ -1,4 +1,5 @@
 import itertools
+from typing import Callable, Tuple, Dict
 
 class Card:
     """
@@ -7,8 +8,8 @@ class Card:
 
     :param value: int, value
     """
-    legal_values = tuple([i for i in range(14)])
-    effects = {
+    legal_values: Tuple[int,...] = tuple([i for i in range(14)])
+    effects: Dict[int,str] = {
         7: 'KUK',
         8: 'KUK',
         9: 'ŠPION',
@@ -16,7 +17,7 @@ class Card:
         11: 'KŠEFT',
         12: 'KŠEFT'
                }
-    id_incremental = itertools.count()
+    id_incremental: Callable = itertools.count().__next__
 
     def __init__(self, value: int):
         """
@@ -32,4 +33,11 @@ class Card:
 
         self.value = value
         self.effect = Card.effects.get(value) #get method returns None if key not available
-        self.id = next(Card.id_incremental) #gets the incremental id of the card
+        self.id = Card.id_incremental() #gets the incremental id of the card
+
+    def __repr__(self):
+        """
+        Dunder returning the text describing the instance with extra id written, this one cannot be recreated by eval!
+        :return: str
+        """
+        return f"Card({self.value}), id = {self.id}"
