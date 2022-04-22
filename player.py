@@ -1,5 +1,5 @@
 import itertools
-from typing import Callable
+from typing import Callable, List
 
 class Player:
     """
@@ -50,8 +50,8 @@ class Player:
         :return: int, player's score with the current hand
         """
 
-        sum_scores: int = sum([c.value for c in self.hand]) #TODO: modify if the player called "Kabo"
-        return sum_scores
+        _sum_scores: int = sum([c.value for c in self.hand]) #TODO: modify if the player called "Kabo"
+        return _sum_scores
 
     def reached_score_100(self, target_value_to_drop_to: int = 50) -> bool:
         """
@@ -68,3 +68,21 @@ class Player:
             self.players_game_score = target_value_to_drop_to
             _play_next_round = True
         return _play_next_round
+
+    def check_own_cards(self, num_cards: int, which_hand_position: List[int] = []) -> None:
+        """
+
+        :param num_cards: int, number of own cards the player should see
+        :param which_hand_position: List[int], positions of the cards in the players hand
+                                    (which the player wants to see)
+        :return:
+        """
+        if not isinstance(num_cards,int):
+            raise TypeError(f"num_cards should be int, but it is {type(num_cards)}")
+
+        if not isinstance(which_hand_position,list):
+            raise TypeError(f"which_hand_position should be list of ints, but it is {type(which_hand_position)}")
+
+        if not which_hand_position: #unspecified positions, check cards in the order from the left
+            for card in self.hand[:num_cards]:
+                ... #TODO: make card visible to owner

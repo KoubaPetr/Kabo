@@ -34,6 +34,7 @@ class Card:
         self.value = value
         self.effect = Card.effects.get(value) #get method returns None if key not available
         self.id = Card.id_incremental() #gets the incremental id of the card
+        #TODO: handle visibility
 
     def __repr__(self):
         """
@@ -41,3 +42,5 @@ class Card:
         :return: str
         """
         return f"Card({self.value}), id = {self.id}"
+
+    #Todo: function for handling visibility

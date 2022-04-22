@@ -23,7 +23,7 @@ class Round:
     """
     id_incremental: Callable = itertools.count().__next__  # Probably bad - we will need to be able to reset the counter
 
-    def __init__(self, cards: List[Card], players: List[Player]):
+    def __init__(self, cards: List[Card], players: List[Player], starting_player: Player):
         """
         Constructor method
         """
@@ -38,7 +38,11 @@ class Round:
         self.discard_pile: List[Card] = []
         self._discard_card() #init the discard pile
 
-        #TODO: let the players peek at 2 cards
+        self._let_players_see_cards()
+
+        self._start_playing(starting_player= starting_player)
+
+        #TODO: when to calculate the game scores (based on Kabo etc?) Some function at the end of round needed?
 
     def _deal_cards_to_players(self, cards_per_player: int = 4) -> None:
         """
@@ -51,15 +55,30 @@ class Round:
                 _new_hand.append(self.main_deck.pop())
             player.hand = _new_hand
 
-    def _discard_card(self):
+    def _discard_card(self) -> None:
         """
         Method to move the card from the main deck on top of the discard pile (and handle its visibility)
+
         :return:
         """
         _new_card: Card = self.main_deck.pop()
         #Todo: handle visibility
         self.discard_pile.append(_new_card)
 
-    # def _show_card_to_owner(self):
-    #     ...  # TODO: implement me
-    #     raise NotImplementedError('_show_card_to_owner function has not yet been implemented')
+    def _let_players_see_cards(self, number_of_cards_to_see: int = 2) -> None:
+        """
+        Method calling all players in the round to see certain number of their cards.
+
+        :param number_of_cards_to_see: int, denoting how many cards is each player allowed to see
+        :return:
+        """
+        for player in self.players:
+            player.check_own_cards(num_cards=number_of_cards_to_see)
+
+    def _start_playing(self, starting_player: Player):
+        """
+        Method calling the Players to play until the end of Round is met.
+
+        :param starting_player:
+        :return:
+        """
