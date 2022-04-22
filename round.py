@@ -1,5 +1,5 @@
 import itertools
-from typing import Dict, List, Tuple
+from typing import List, Callable
 from card import Card
 from random import shuffle
 from player import Player
@@ -21,10 +21,13 @@ class Round:
     6)  At the end of the round, get the score of the players in the round and use it to increment their game scores, 
         also take in consideration the effect of Kabo
     """
+    id_incremental: Callable = itertools.count().__next__  # Probably bad - we will need to be able to reset the counter
+
     def __init__(self, cards: List[Card], players: List[Player]):
         """
         Constructor method
         """
+        self.id = Round.id_incremental()
 
         self.main_deck: List[Card] = cards
         shuffle(self.main_deck) #shuffles the cards in place

@@ -10,7 +10,7 @@ class Player:
                             (later differentiate computer into different kinds of agents, GREEDY, RANDOM etc.)
     """
 
-    id_incremental: Callable = itertools.count().__next__
+    id_incremental: Callable = itertools.count().__next__ #Probably bad - we will need to be able to reset the counter
 
     def __init__(self, name: str, character: str = 'HUMAN'):
         """

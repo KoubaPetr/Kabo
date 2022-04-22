@@ -17,7 +17,7 @@ class Card:
         11: 'KŠEFT',
         12: 'KŠEFT'
                }
-    id_incremental: Callable = itertools.count().__next__
+    id_incremental: Callable = itertools.count().__next__ #Probably bad - we will need to be able to reset the counter
 
     def __init__(self, value: int):
         """
