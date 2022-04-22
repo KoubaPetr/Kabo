@@ -52,3 +52,19 @@ class Player:
 
         sum_scores: int = sum([c.value for c in self.hand]) #TODO: modify if the player called "Kabo"
         return sum_scores
+
+    def reached_score_100(self, target_value_to_drop_to: int = 50) -> bool:
+        """
+        :param: target_value_to_drop_to, int, number specified in Game class, to which score drops after hitting
+                target value (100) for the first time (usually 50)
+        :return: bool,  value indicating whether the player hit 100 for second time already and the game
+                        should not continue
+        """
+
+        if self.matched_100:
+            _play_next_round = False
+        else:
+            self.matched_100 = True #TODO: after each round this needs to be reset
+            self.players_game_score = target_value_to_drop_to
+            _play_next_round = True
+        return _play_next_round

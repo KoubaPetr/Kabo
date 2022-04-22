@@ -29,6 +29,7 @@ class Game:
     }
     CARDS: List[Card] = [Card(value) for value, ammount in CARD_AMMOUNTS.items() for i in range(ammount)]
     TARGET_POINT_VALUE: int = 100
+    POINT_VALUE_AFTER_HITTING_TARGET: int = 50
     ALLOWED_PLAYER_COUNTS: Tuple[int, ...] = (2, 3, 4)
 
     def __init__(self, player_names: List[str]):
@@ -57,7 +58,7 @@ class Game:
         Function to play a new round
         :return:
         """
-        round: Round = Round()  # the constructor of round should kick-start it
+        round: Round = Round(cards=Game.CARDS.copy(), players=self.players)  # the constructor of round should kick-start it
         return round
 
     def _read_players_game_scores(self) -> Dict[Player, int]:
@@ -77,17 +78,19 @@ class Game:
             round: Round = self._play_round()
             self.rounds.append(round)
             _scores: Dict[Player,int] = self._read_players_game_scores()
-            _max_score: int = max(_scores)
+            _play_next_round: bool = True
 
-            if _max_score > Game.TARGET_POINT_VALUE:  # TODO check for second (and other) max scores because of matching 100!!!
-                break
-            elif _max_score == Game.TARGET_POINT_VALUE:
-                ...
-                # TODO edit the players bool attr for matching target_value - end if it was already positive
-            else:
-                continue
+            for player, score in _scores.items():
+                if score == Game.TARGET_POINT_VALUE:
+                    _play_next_round = player.reached_score_100(target_value_to_drop_to=Game.POINT_VALUE_AFTER_HITTING_TARGET)
+
+                elif score > Game.TARGET_POINT_VALUE:
+                    _play_next_round = False
+
             # TODO: save the score after round into game history ?
             self._report_standings_after_round(round=round)
+            if not _play_next_round:
+                break
         self._report_standings_after_game()
 
     def _report_standings_after_round(self, round: Round) -> None:
