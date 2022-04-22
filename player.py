@@ -1,3 +1,6 @@
+import itertools
+from typing import Callable
+
 class Player:
     """
     Class for representing individual players of the game
@@ -6,6 +9,8 @@ class Player:
                             alternative (CHECK options) - this should expect values HUMAN or COMPUTER
                             (later differentiate computer into different kinds of agents, GREEDY, RANDOM etc.)
     """
+
+    id_incremental: Callable = itertools.count().__next__
 
     def __init__(self, name: str, character: str = 'HUMAN'):
         """
@@ -16,7 +21,7 @@ class Player:
         self.hand: list = []
         self.matched_100: bool = False #by 100 we mean generally the Game.TARGET_POINT_VALUE
         self.players_game_score: int = 0
-        #TODO: generate player IDs
+        self.id: int = Player.id_incremental()
 
         if character != 'HUMAN':
             raise ValueError("Sofar only human players are supported, other kinds of agents will be implemented later")
@@ -45,5 +50,5 @@ class Player:
         :return: int, player's score with the current hand
         """
 
-        sum_scores: int = sum([c.value for c in self.hand])
+        sum_scores: int = sum([c.value for c in self.hand]) #TODO: modify if the player called "Kabo"
         return sum_scores

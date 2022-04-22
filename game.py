@@ -60,12 +60,12 @@ class Game:
         round: Round = Round()  # the constructor of round should kick-start it
         return round
 
-    def _read_players_match_scores(self) -> List[int]:
+    def _read_players_game_scores(self) -> Dict[Player, int]:
         """
 
-        :return: List[int], with current match scores of all players
+        :return: Dict[Player,int], with current match scores of all players
         """
-        return [p.players_game_score for p in self.players]
+        return {p: p.players_game_score for p in self.players}
 
     def play_game(self) -> None:
         """
@@ -76,7 +76,7 @@ class Game:
         while True:
             round: Round = self._play_round()
             self.rounds.append(round)
-            _scores: List[int] = self._read_players_match_scores()
+            _scores: Dict[Player,int] = self._read_players_game_scores()
             _max_score: int = max(_scores)
 
             if _max_score > Game.TARGET_POINT_VALUE:  # TODO check for second (and other) max scores because of matching 100!!!
