@@ -30,7 +30,7 @@ class Game:
 
         _player_deque: deque = deque(player_names)
         _player_deque.rotate(1)  # rotate player names to leave room for later rotation into original order
-
+        #TODO: consider reseting players id counter before creating them ?
         self.players: List[Player] = [Player(name) for name in _player_deque]
         self.rounds: List[Round] = []  # use it to remember the rounds - those should remember the turns
 
