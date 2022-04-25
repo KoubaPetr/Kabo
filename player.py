@@ -1,5 +1,6 @@
 import itertools
 from typing import Callable, List
+from rules import POINT_VALUE_AFTER_HITTING_TARGET
 
 class Player:
     """
@@ -53,7 +54,7 @@ class Player:
         _sum_scores: int = sum([c.value for c in self.hand]) #TODO: modify if the player called "Kabo"
         return _sum_scores
 
-    def reached_score_100(self, target_value_to_drop_to: int = 50) -> bool:
+    def reached_score_100(self) -> bool:
         """
         :param: target_value_to_drop_to, int, number specified in Game class, to which score drops after hitting
                 target value (100) for the first time (usually 50)
@@ -65,7 +66,7 @@ class Player:
             _play_next_round = False
         else:
             self.matched_100 = True #TODO: after each round this needs to be reset
-            self.players_game_score = target_value_to_drop_to
+            self.players_game_score = POINT_VALUE_AFTER_HITTING_TARGET
             _play_next_round = True
         return _play_next_round
 
@@ -80,9 +81,29 @@ class Player:
         if not isinstance(num_cards,int):
             raise TypeError(f"num_cards should be int, but it is {type(num_cards)}")
 
+        if num_cards < 0 or num_cards > len(self.hand):
+            raise ValueError(f"The desired number of cards to see = {num_cards} is out of range for hand of size {len(self.hand)}")
+
         if not isinstance(which_hand_position,list):
             raise TypeError(f"which_hand_position should be list of ints, but it is {type(which_hand_position)}")
 
+        for position in which_hand_position:
+            if not isinstance(position, int):
+                raise TypeError(f"which_hand_position should contain ints, but it contains {type(position)}")
+            if position < 0 or position > len(self.hand):
+                raise ValueError(f"The desired position = {position} is out of range for hand of size {len(self.hand)}")
+
+
         if not which_hand_position: #unspecified positions, check cards in the order from the left
             for card in self.hand[:num_cards]:
-                ... #TODO: make card visible to owner
+                card.visible_to_owner = True
+        else:
+            for position in which_hand_position:
+                self.hand[position].visible_to_owner = True
+
+    def card_checking_preference(self) -> List[int]:
+        """
+        Function which returns the positions of the cards that the player wants to look at at the start of the round
+        :return: List[int]
+        """
+        return [] #TODO: for human player we can query him for his/her preference here - by default no preference

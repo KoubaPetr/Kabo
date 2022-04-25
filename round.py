@@ -3,27 +3,20 @@ from typing import List, Callable
 from card import Card
 from random import shuffle
 from player import Player
+from rules import NUMBER_OF_CARDS_TO_SEE, CARDS_PER_PLAYER
 
 class Round:
     """
-    #TODO fill the constructor arguments
+    Class representing single round of the game, that is part of game starting with cards being dealt and ending after
+    Kabo or deck of cards being empty
+
+    :param cards: List[Card], copy of the global game list of all the cards
+    :param players: List[Player], players playing the round
     """
-    ... #TODO: implement me
-    """
-    One Round consists of shuffling the deck, dealing the cards and playing until end by Kabo or end by depleting the deck
-    KICK-START the round in the constructor! 
-    Increment the IDs of the rounds!
-    1)  Generate the cards into the main deck
-    2)  Deal the cards to the players
-    3)  Put one card to the discard deck - maintain visibility
-    4)  Let the players peek at 2 cards - maintain visibility
-    5)  Let the players play
-    6)  At the end of the round, get the score of the players in the round and use it to increment their game scores, 
-        also take in consideration the effect of Kabo
-    """
+
     id_incremental: Callable = itertools.count().__next__  # Probably bad - we will need to be able to reset the counter
 
-    def __init__(self, cards: List[Card], players: List[Player], starting_player: Player):
+    def __init__(self, cards: List[Card], players: List[Player]):
         """
         Constructor method
         """
@@ -40,7 +33,7 @@ class Round:
 
         self._let_players_see_cards()
 
-        self._start_playing(starting_player= starting_player)
+        self._start_playing()
 
         #TODO: when to calculate the game scores (based on Kabo etc?) Some function at the end of round needed?
 
@@ -50,10 +43,20 @@ class Round:
         :return:
         """
         for player in self.players:
-            _new_hand: List[Card] = []
-            for _ in range(cards_per_player):
-                _new_hand.append(self.main_deck.pop())
-            player.hand = _new_hand
+            for _ in range(CARDS_PER_PLAYER):
+                _dealt_card: Card = self.main_deck.pop()
+                self._deal_single_card(_dealt_card, player)
+
+    def _deal_single_card(self, card: Card, player: Player) -> None:
+        """
+
+        :param card: Card, to be dealt
+        :param player: Player, to be given the card
+        :return:
+        """
+        player.hand.append(card)
+        card.status = 'HAND'
+        card.owner = player
 
     def _discard_card(self) -> None:
         """
@@ -62,23 +65,24 @@ class Round:
         :return:
         """
         _new_card: Card = self.main_deck.pop()
-        #Todo: handle visibility
+        _new_card.status = 'DISCARD_PILE'
+        _new_card.publicly_visible = True #maybe cover the previously top card and make it again not visible?
+
         self.discard_pile.append(_new_card)
 
-    def _let_players_see_cards(self, number_of_cards_to_see: int = 2) -> None:
+    def _let_players_see_cards(self) -> None:
         """
         Method calling all players in the round to see certain number of their cards.
-
-        :param number_of_cards_to_see: int, denoting how many cards is each player allowed to see
         :return:
         """
         for player in self.players:
-            player.check_own_cards(num_cards=number_of_cards_to_see)
+            _which_cards = player.card_checking_preference()
+            player.check_own_cards(num_cards=NUMBER_OF_CARDS_TO_SEE, which_hand_position= _which_cards)
 
-    def _start_playing(self, starting_player: Player):
+    def _start_playing(self):
         """
-        Method calling the Players to play until the end of Round is met.
+        Method calling the Players to play until the end of Round is reached.
 
-        :param starting_player:
         :return:
         """
+        ... #TODO

@@ -1,36 +1,19 @@
 from card import Card
-from typing import Dict, List, Tuple
+from typing import Dict, List
 from player import Player
 from round import Round
+from rules import TARGET_POINT_VALUE, ALLOWED_PLAYER_COUNTS, CARD_AMMOUNTS
+from collections import deque
 
 
 class Game:
     """
     Class representation for a single game. One game consists of several Rounds, until some player busts
     TARGET_POINT_VALUE (typically 100)
-
     :param player_names: List[str], list of player names who will play this game (length should be 2-4)
     """
-    CARD_AMMOUNTS: Dict[int, int] = {
-        0: 2,
-        1: 4,
-        2: 4,
-        3: 4,
-        4: 4,
-        5: 4,
-        6: 4,
-        7: 4,
-        8: 4,
-        9: 4,
-        10: 4,
-        11: 4,
-        12: 4,
-        13: 2
-    }
-    CARDS: List[Card] = [Card(value) for value, ammount in CARD_AMMOUNTS.items() for i in range(ammount)]
-    TARGET_POINT_VALUE: int = 100
-    POINT_VALUE_AFTER_HITTING_TARGET: int = 50
-    ALLOWED_PLAYER_COUNTS: Tuple[int, ...] = (2, 3, 4)
+
+    CARDS: List[Card] = [Card(value) for value, amount in CARD_AMMOUNTS.items() for i in range(amount)]
 
     def __init__(self, player_names: List[str]):
         """
@@ -39,11 +22,14 @@ class Game:
         if type(player_names) != list:
             raise TypeError(f"The player names should be passed as a list. Not as {type(player_names)}")
 
-        if len(player_names) not in Game.ALLOWED_PLAYER_COUNTS:
+        if len(player_names) not in ALLOWED_PLAYER_COUNTS:
             raise ValueError(f"The list of the players should have length 2-4. The provided list has different length "
                              f"= {len(player_names)}.")
 
-        self.players: List[Player] = [Player(name) for name in player_names]
+        player_deque: deque = deque(player_names)
+        player_deque.rotate(1)  # rotate player names to leave room for later rotation into original order
+
+        self.players: List[Player] = [Player(name) for name in player_deque]
         self.rounds: List[Round] = []  # use it to remember the rounds - those should remember the turns
 
     def __repr__(self):
@@ -58,7 +44,11 @@ class Game:
         Function to play a new round
         :return:
         """
-        round: Round = Round(cards=Game.CARDS.copy(), players=self.players)  # the constructor of round should kick-start it
+        _players_deque: deque = deque(self.players)
+        _players_deque.rotate(-1)
+        _players_rotated: list = list(_players_deque)
+
+        round: Round = Round(cards=Game.CARDS.copy(), players=_players_rotated)
         return round
 
     def _read_players_game_scores(self) -> Dict[Player, int]:
@@ -77,14 +67,14 @@ class Game:
         while True:
             round: Round = self._play_round()
             self.rounds.append(round)
-            _scores: Dict[Player,int] = self._read_players_game_scores()
+            _scores: Dict[Player, int] = self._read_players_game_scores()
             _play_next_round: bool = True
 
             for player, score in _scores.items():
-                if score == Game.TARGET_POINT_VALUE:
-                    _play_next_round = player.reached_score_100(target_value_to_drop_to=Game.POINT_VALUE_AFTER_HITTING_TARGET)
+                if score == TARGET_POINT_VALUE:
+                    _play_next_round = player.reached_score_100()
 
-                elif score > Game.TARGET_POINT_VALUE:
+                elif score > TARGET_POINT_VALUE:
                     _play_next_round = False
 
             # TODO: save the score after round into game history ?
@@ -102,7 +92,9 @@ class Game:
         print(f'Score after round {round.id}')
         for p in self.players:
             print(
-                f'{p.name}({p.id}) has {p.players_game_score}. With {p.get_players_score_in_round()} points obtained in latest round.')
+                f'{p.name}({p.id}) has {p.players_game_score}. With {p.get_players_score_in_round()} '
+                f'points obtained in latest round.'
+            )
         print("-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-")
 
     def _report_standings_after_game(self) -> None:
@@ -110,7 +102,7 @@ class Game:
         Utility to report standings in between rounds
         :return: None (for now, printing a statement only)
         """
-        _sorted_players: List[Player] = sorted(self.players, key=lambda p: p.players_game_score, reverse=True)
+        _sorted_players: List[Player] = sorted(self.players, key=lambda plr: plr.players_game_score, reverse=True)
 
         print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
         print(f'Results of the game')

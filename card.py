@@ -1,5 +1,6 @@
 import itertools
-from typing import Callable, Tuple, Dict
+from typing import Callable, Tuple, Dict, List, Optional
+from player import Player
 
 class Card:
     """
@@ -31,10 +32,14 @@ class Card:
         if value not in Card.legal_values:
             raise ValueError(f'The value you have entered is out of the legal range: {Card.legal_values}')
 
-        self.value = value
-        self.effect = Card.effects.get(value) #get method returns None if key not available
-        self.id = Card.id_incremental() #gets the incremental id of the card
-        #TODO: handle visibility
+        self.value: int = value
+        self.effect: Optional[str] = Card.effects.get(value) #get method returns None if key not available
+        self.id: int = Card.id_incremental() #gets the incremental id of the card
+        self.publicly_visible: bool = False
+        self.known_to_owner: bool = False
+        self.known_to_other_players: List[Player] = []
+        self.status: str = 'MAIN_DECK' #other options are DISCARD_PILE and HAND
+        self.owner: Optional[Player] = None
 
     def __repr__(self):
         """
