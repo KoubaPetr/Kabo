@@ -2,7 +2,7 @@ from card import Card
 from typing import Dict, List
 from player import Player
 from round import Round
-from rules import TARGET_POINT_VALUE, ALLOWED_PLAYER_COUNTS, CARD_AMMOUNTS
+from rules import TARGET_POINT_VALUE, ALLOWED_PLAYER_COUNTS, CARD_AMOUNTS
 from collections import deque
 
 
@@ -13,7 +13,7 @@ class Game:
     :param player_names: List[str], list of player names who will play this game (length should be 2-4)
     """
 
-    CARDS: List[Card] = [Card(value) for value, amount in CARD_AMMOUNTS.items() for i in range(amount)]
+    CARDS: List[Card] = [Card(value) for value, amount in CARD_AMOUNTS.items() for i in range(amount)]
 
     def __init__(self, player_names: List[str]):
         """
@@ -26,10 +26,12 @@ class Game:
             raise ValueError(f"The list of the players should have length 2-4. The provided list has different length "
                              f"= {len(player_names)}.")
 
-        player_deque: deque = deque(player_names)
-        player_deque.rotate(1)  # rotate player names to leave room for later rotation into original order
+        self.player_name_list: List[str] = player_names
 
-        self.players: List[Player] = [Player(name) for name in player_deque]
+        _player_deque: deque = deque(player_names)
+        _player_deque.rotate(1)  # rotate player names to leave room for later rotation into original order
+
+        self.players: List[Player] = [Player(name) for name in _player_deque]
         self.rounds: List[Round] = []  # use it to remember the rounds - those should remember the turns
 
     def __repr__(self):
@@ -37,7 +39,7 @@ class Game:
         Overloading representation of the Game class
         :return: description of the instance, which can be passed to eval
         """
-        return "Game()"
+        return f"Game({self.player_name_list})"
 
     def _play_round(self) -> Round:
         """
@@ -92,7 +94,7 @@ class Game:
         print(f'Score after round {round.id}')
         for p in self.players:
             print(
-                f'{p.name}({p.id}) has {p.players_game_score}. With {p.get_players_score_in_round()} '
+                f'{p.name}({p.id}) has {p.players_game_score}. With {p.get_players_score_in_round(round=round)} '
                 f'points obtained in latest round.'
             )
         print("-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-")

@@ -1,43 +1,52 @@
-import itertools
-from typing import List, Callable
+from itertools import count, cycle
+from typing import List, TYPE_CHECKING
+if TYPE_CHECKING:
+    from player import Player
 from card import Card
 from random import shuffle
-from player import Player
 from rules import NUMBER_OF_CARDS_TO_SEE, CARDS_PER_PLAYER
+
 
 class Round:
     """
     Class representing single round of the game, that is part of game starting with cards being dealt and ending after
     Kabo or deck of cards being empty
-
     :param cards: List[Card], copy of the global game list of all the cards
     :param players: List[Player], players playing the round
     """
 
-    id_incremental: Callable = itertools.count().__next__  # Probably bad - we will need to be able to reset the counter
+    _id_incremental: count = count(0)
 
-    def __init__(self, cards: List[Card], players: List[Player]):
+    def __init__(self, cards: List[Card], players: List['Player']):
         """
         Constructor method
         """
-        self.id = Round.id_incremental()
-
+        # Init round attributes
+        self.id: int = next(self._id_incremental)
+        self.players: List['Player'] = players
+        self.kabo_called: bool = False  # indicator whether kabo was called in this round already
+        self.discard_pile: List[Card] = []
         self.main_deck: List[Card] = cards
-        shuffle(self.main_deck) #shuffles the cards in place
 
-        self.players: List[Player] = players
+        # Reset players attributes which might have been altered in previous rounds
+        self._reset_players()
+
+        # Shuffle and deal the cards
+        shuffle(self.main_deck)  # shuffles the cards in place
         self._deal_cards_to_players()
 
-        self.discard_pile: List[Card] = []
-        self._discard_card() #init the discard pile
+        # Init the discard pile
+        _first_discarded_card: Card = self.main_deck.pop()
+        self._discard_card(_first_discarded_card)
 
+        # Start actions of players
         self._let_players_see_cards()
-
         self._start_playing()
 
-        #TODO: when to calculate the game scores (based on Kabo etc?) Some function at the end of round needed?
+        # Update players score after round
+        self._update_players_game_scores()
 
-    def _deal_cards_to_players(self, cards_per_player: int = 4) -> None:
+    def _deal_cards_to_players(self) -> None:
         """
         This function deals the cards to players hands
         :return:
@@ -47,28 +56,16 @@ class Round:
                 _dealt_card: Card = self.main_deck.pop()
                 self._deal_single_card(_dealt_card, player)
 
-    def _deal_single_card(self, card: Card, player: Player) -> None:
+    def _discard_card(self, card: Card) -> None:
         """
-
-        :param card: Card, to be dealt
-        :param player: Player, to be given the card
-        :return:
-        """
-        player.hand.append(card)
-        card.status = 'HAND'
-        card.owner = player
-
-    def _discard_card(self) -> None:
-        """
-        Method to move the card from the main deck on top of the discard pile (and handle its visibility)
+        Method to put the given card from on top of the discard pile (and handle its visibility)
 
         :return:
         """
-        _new_card: Card = self.main_deck.pop()
-        _new_card.status = 'DISCARD_PILE'
-        _new_card.publicly_visible = True #maybe cover the previously top card and make it again not visible?
+        card.status = 'DISCARD_PILE'
+        card.publicly_visible = True  # maybe cover the previously top card and make it again not visible?
 
-        self.discard_pile.append(_new_card)
+        self.discard_pile.append(card)
 
     def _let_players_see_cards(self) -> None:
         """
@@ -77,7 +74,7 @@ class Round:
         """
         for player in self.players:
             _which_cards = player.card_checking_preference()
-            player.check_own_cards(num_cards=NUMBER_OF_CARDS_TO_SEE, which_hand_position= _which_cards)
+            player.check_own_cards(num_cards=NUMBER_OF_CARDS_TO_SEE, which_hand_position=_which_cards)
 
     def _start_playing(self):
         """
@@ -85,4 +82,49 @@ class Round:
 
         :return:
         """
-        ... #TODO
+        _players_cycle: cycle = cycle(self.players)
+        _kabo_counter: int = len(self.players)
+        _kabo_active: bool = False
+
+        while self.main_deck:
+            if _kabo_counter == 0:
+                break
+
+            current_player: 'Player' = next(_players_cycle)
+            kabo_called = current_player.play_turn(round=self)
+
+            if kabo_called:
+                self.kabo_called = True
+                _kabo_active = True
+
+            if _kabo_active:
+                _kabo_counter -= 1
+
+    def _reset_players(self) -> None:
+        """
+        Method to reset players attributes which might have changed in previous round
+        :return:
+        """
+
+        for player in self.players:
+            player.reset_player_after_round()
+
+    def _update_players_game_scores(self) -> None:
+        """
+        Function which invokes all players game score update
+        :return:
+        """
+        for player in self.players:
+            player.players_game_score += player.get_players_score_in_round(round=self)
+
+    @staticmethod
+    def _deal_single_card(card: Card, player: 'Player') -> None:
+        """
+        static method for dealing a single card from main deck to player
+        :param card: Card, to be dealt
+        :param player: Player, to be given the card
+        :return:
+        """
+        player.hand.append(card)
+        card.status = 'HAND'
+        card.owner = player

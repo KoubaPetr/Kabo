@@ -1,24 +1,18 @@
-import itertools
-from typing import Callable, Tuple, Dict, List, Optional
-from player import Player
+from itertools import count
+from typing import List, Optional, TYPE_CHECKING
+if TYPE_CHECKING:
+    from player import Player
+from rules import CARD_EFFECTS, CARD_LEGAL_VALUES
+
 
 class Card:
     """
     Class representing the cards available in the game. Class variables control the types of cards which are available
     in the game. Legal instances generate their effect based on value.
-
     :param value: int, value
     """
-    legal_values: Tuple[int,...] = tuple([i for i in range(14)])
-    effects: Dict[int,str] = {
-        7: 'KUK',
-        8: 'KUK',
-        9: 'ŠPION',
-        10: 'ŠPION',
-        11: 'KŠEFT',
-        12: 'KŠEFT'
-               }
-    id_incremental: Callable = itertools.count().__next__ #Probably bad - we will need to be able to reset the counter
+
+    _id_incremental: count = count(0)
 
     def __init__(self, value: int):
         """
@@ -26,19 +20,19 @@ class Card:
         """
 
         # Checking type and value of the input 'value'
-        if not isinstance(value,int):
+        if not isinstance(value, int):
             raise TypeError(f'Card value needs to be an int. You passed {type(value)}.')
 
-        if value not in Card.legal_values:
-            raise ValueError(f'The value you have entered is out of the legal range: {Card.legal_values}')
+        if value not in CARD_LEGAL_VALUES:
+            raise ValueError(f'The value you have entered is out of the legal range: {CARD_LEGAL_VALUES}')
 
         self.value: int = value
-        self.effect: Optional[str] = Card.effects.get(value) #get method returns None if key not available
-        self.id: int = Card.id_incremental() #gets the incremental id of the card
+        self.effect: Optional[str] = CARD_EFFECTS.get(value)  # get method returns None if key not available
+        self.id: int = next(self._id_incremental)
         self.publicly_visible: bool = False
         self.known_to_owner: bool = False
         self.known_to_other_players: List[Player] = []
-        self.status: str = 'MAIN_DECK' #other options are DISCARD_PILE and HAND
+        self.status: str = 'MAIN_DECK'  # other options are DISCARD_PILE and HAND
         self.owner: Optional[Player] = None
 
     def __repr__(self):
@@ -47,5 +41,3 @@ class Card:
         :return: str
         """
         return f"Card({self.value}), id = {self.id}"
-
-    #Todo: function for handling visibility
