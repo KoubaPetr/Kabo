@@ -1,10 +1,13 @@
 from itertools import count, cycle
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING, List
+
 if TYPE_CHECKING:
     from player import Player
-from card import Card
+
 from random import shuffle
-from rules import NUMBER_OF_CARDS_TO_SEE, CARDS_PER_PLAYER
+
+from card import Card
+from rules import CARDS_PER_PLAYER, NUMBER_OF_CARDS_TO_SEE
 
 
 class Round:
@@ -17,14 +20,16 @@ class Round:
 
     _id_incremental: count = count(0)
 
-    def __init__(self, cards: List[Card], players: List['Player']):
+    def __init__(self, cards: List[Card], players: List["Player"]):
         """
         Constructor method
         """
         # Init round attributes
         self.id: int = next(self._id_incremental)
-        self.players: List['Player'] = players
-        self.kabo_called: bool = False  # indicator whether kabo was called in this round already
+        self.players: List["Player"] = players
+        self.kabo_called: bool = (
+            False  # indicator whether kabo was called in this round already
+        )
         self.discard_pile: List[Card] = []
         self.main_deck: List[Card] = cards
 
@@ -62,8 +67,10 @@ class Round:
 
         :return:
         """
-        card.status = 'DISCARD_PILE'
-        card.publicly_visible = True  # maybe cover the previously top card and make it again not visible?
+        card.status = "DISCARD_PILE"
+        card.publicly_visible = (
+            True  # maybe cover the previously top card and make it again not visible?
+        )
 
         self.discard_pile.append(card)
 
@@ -74,7 +81,9 @@ class Round:
         """
         for player in self.players:
             _which_cards = player.card_checking_preference()
-            player.check_own_cards(num_cards=NUMBER_OF_CARDS_TO_SEE, which_hand_position=_which_cards)
+            player.check_own_cards(
+                num_cards=NUMBER_OF_CARDS_TO_SEE, which_hand_position=_which_cards
+            )
 
     def _start_playing(self):
         """
@@ -90,7 +99,7 @@ class Round:
             if _kabo_counter == 0:
                 break
 
-            current_player: 'Player' = next(_players_cycle)
+            current_player: "Player" = next(_players_cycle)
             kabo_called = current_player.play_turn(round=self)
 
             if kabo_called:
@@ -118,7 +127,7 @@ class Round:
             player.players_game_score += player.get_players_score_in_round(round=self)
 
     @staticmethod
-    def _deal_single_card(card: Card, player: 'Player') -> None:
+    def _deal_single_card(card: Card, player: "Player") -> None:
         """
         static method for dealing a single card from main deck to player
         :param card: Card, to be dealt
@@ -126,5 +135,5 @@ class Round:
         :return:
         """
         player.hand.append(card)
-        card.status = 'HAND'
+        card.status = "HAND"
         card.owner = player

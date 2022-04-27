@@ -1,8 +1,11 @@
+"""
+Class Player
+"""
 from itertools import count
 from typing import List, Optional
-from rules import POINT_VALUE_AFTER_HITTING_TARGET, KABO_MALUS, ALLOWED_PLAYS
-from round import Round
 from card import Card
+from round import Round
+from rules import ALLOWED_PLAYS, KABO_MALUS, POINT_VALUE_AFTER_HITTING_TARGET
 
 
 class Player:
@@ -16,20 +19,24 @@ class Player:
 
     _id_incremental: count = count(0)
 
-    def __init__(self, name: str, character: str = 'HUMAN'):
+    def __init__(self, name: str, character: str = "HUMAN"):
         """
         Constructor method
         """
         self.name: str = name  # type checking of the input args?
         self.character: str = character  # type checking of the input args?
         self.hand: list = []
-        self.matched_100: bool = False  # by 100 we mean generally the Game.TARGET_POINT_VALUE
+        self.matched_100: bool = (
+            False  # by 100 we mean generally the Game.TARGET_POINT_VALUE
+        )
         self.players_game_score: int = 0
         self.id: int = next(self._id_incremental)
         self.called_kabo: bool = False
 
-        if character != 'HUMAN':
-            raise ValueError("Sofar only human players are supported, other kinds of agents will be implemented later")
+        if character != "HUMAN":
+            raise ValueError(
+                "Sofar only human players are supported, other kinds of agents will be implemented later"
+            )
 
     def __repr__(self):
         """
@@ -46,7 +53,7 @@ class Player:
         """
         if not isinstance(other, Player):
             return False
-        elif other.id == self.id and other.name == self.name:
+        if other.id == self.id and other.name == self.name:
             return True
         else:
             return False
@@ -61,20 +68,23 @@ class Player:
         For human players this should take as an argument the type of move they want to play. For computer players,
         the move can be decided based on their character
         """
-        _players_play_decision = ...  # TODO: implement me - for human player just ask for his decision, for comp. call strategy
+        _players_play_decision = (
+            ...
+        )  # TODO: implement me - for human player just ask for his decision, for comp. call strategy
 
-        if _players_play_decision == 'KABO':
+        if _players_play_decision == "KABO":
             self.call_kabo(round=round)
             return True
-        elif _players_play_decision == 'HIT_DECK':
+        elif _players_play_decision == "HIT_DECK":
             self.hit_deck(round=round)
             return False
-        elif _players_play_decision == 'HIT_DISCARD_PILE':
+        elif _players_play_decision == "HIT_DISCARD_PILE":
             self.hit_discard_pile(round=round)
             return False
         else:
             raise ValueError(
-                f"The attempted type of play = {_players_play_decision} is not supported. Supported plays are {ALLOWED_PLAYS}")
+                f"The attempted type of play = {_players_play_decision} is not supported. Supported plays are {ALLOWED_PLAYS}"
+            )
 
     def get_players_score_in_round(self, round: Round) -> int:
         """
@@ -87,8 +97,11 @@ class Player:
         if not self.called_kabo:
             return _sum_hand
         else:
-            _other_player_scores: List[int] = [plr.get_players_score_in_round(round) for plr in round.players if
-                                               plr != self]
+            _other_player_scores: List[int] = [
+                plr.get_players_score_in_round(round)
+                for plr in round.players
+                if plr != self
+            ]
 
             if min(_other_player_scores) < _sum_hand:  # Kabo successful
                 return 0
@@ -111,7 +124,9 @@ class Player:
             _play_next_round = True
         return _play_next_round
 
-    def check_own_cards(self, num_cards: int, which_hand_position: Optional[List[int]] = None) -> None:
+    def check_own_cards(
+        self, num_cards: int, which_hand_position: Optional[List[int]] = None
+    ) -> None:
         """
         Method to handle looking of the player at his/her own cards
         :param num_cards: int, number of own cards the player should see
@@ -124,18 +139,27 @@ class Player:
 
         if num_cards < 0 or num_cards > len(self.hand):
             raise ValueError(
-                f"The desired number of cards to see = {num_cards} is out of range for hand of size {len(self.hand)}")
+                f"The desired number of cards to see = {num_cards} is out of range for hand of size {len(self.hand)}"
+            )
 
         if not isinstance(which_hand_position, list):
-            raise TypeError(f"which_hand_position should be list of ints, but it is {type(which_hand_position)}")
+            raise TypeError(
+                f"which_hand_position should be list of ints, but it is {type(which_hand_position)}"
+            )
 
         for position in which_hand_position:
             if not isinstance(position, int):
-                raise TypeError(f"which_hand_position should contain ints, but it contains {type(position)}")
+                raise TypeError(
+                    f"which_hand_position should contain ints, but it contains {type(position)}"
+                )
             if position < 0 or position > len(self.hand):
-                raise ValueError(f"The desired position = {position} is out of range for hand of size {len(self.hand)}")
+                raise ValueError(
+                    f"The desired position = {position} is out of range for hand of size {len(self.hand)}"
+                )
 
-        if not which_hand_position:  # unspecified positions, check cards in the order from the left
+        if (
+            not which_hand_position
+        ):  # unspecified positions, check cards in the order from the left
             for card in self.hand[:num_cards]:
                 card.visible_to_owner = True
         else:
@@ -147,7 +171,9 @@ class Player:
         Function which returns the positions of the cards that the player wants to look at the start of the round
         :return: List[int]
         """
-        return []  # TODO: for human player we can query him for his/her preference here - by default no preference
+        return (
+            []
+        )  # TODO: for human player we can query him for his/her preference here - by default no preference
 
     def reset_player_after_round(self) -> None:
         """
@@ -187,7 +213,8 @@ class Player:
         """
         ...  # TODO: implement me - if switching card decide on the position (or double, triple switch...)
 
-    def peak(self, card: Card) -> None:
+    @staticmethod
+    def peak(card: Card) -> None:
         """
         perform the effect 'Peak' and check the given card
         :param card: Card, the card to be peaked at as decided by the player

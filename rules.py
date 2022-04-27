@@ -1,4 +1,4 @@
-from typing import Tuple, Dict, List
+from typing import Dict, List, Tuple
 
 """
 File holding all the constants relevant for the game (coming from the rules)
@@ -21,20 +21,24 @@ CARD_AMOUNTS: Dict[int, int] = {
     10: 4,
     11: 4,
     12: 4,
-    13: 2
+    13: 2,
 }
-NUMBER_OF_CARDS_TO_SEE: int = 2  # at the beginning of the Round, after the cards are dealt
-CARDS_PER_PLAYER: int = 4  # number of cards to be dealt to each player at the beginning of round
+NUMBER_OF_CARDS_TO_SEE: int = (
+    2  # at the beginning of the Round, after the cards are dealt
+)
+CARDS_PER_PLAYER: int = (
+    4  # number of cards to be dealt to each player at the beginning of round
+)
 
 CARD_LEGAL_VALUES: Tuple[int, ...] = tuple([i for i in range(14)])
 CARD_EFFECTS: Dict[int, str] = {
-    7: 'KUK',
-    8: 'KUK',
-    9: 'ŠPION',
-    10: 'ŠPION',
-    11: 'KŠEFT',
-    12: 'KŠEFT'
+    7: "KUK",
+    8: "KUK",
+    9: "ŠPION",
+    10: "ŠPION",
+    11: "KŠEFT",
+    12: "KŠEFT",
 }
 
 KABO_MALUS: int = 10
-ALLOWED_PLAYS: List[str] = ['KABO', 'HIT_DECK', 'HIT_DISCARD_PILE']
+ALLOWED_PLAYS: List[str] = ["KABO", "HIT_DECK", "HIT_DISCARD_PILE"]

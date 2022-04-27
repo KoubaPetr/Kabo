@@ -1,9 +1,10 @@
-from card import Card
+from collections import deque
 from typing import Dict, List
+
+from card import Card
 from player import Player
 from round import Round
-from rules import TARGET_POINT_VALUE, ALLOWED_PLAYER_COUNTS, CARD_AMOUNTS
-from collections import deque
+from rules import ALLOWED_PLAYER_COUNTS, CARD_AMOUNTS, TARGET_POINT_VALUE
 
 
 class Game:
@@ -13,26 +14,36 @@ class Game:
     :param player_names: List[str], list of player names who will play this game (length should be 2-4)
     """
 
-    CARDS: List[Card] = [Card(value) for value, amount in CARD_AMOUNTS.items() for i in range(amount)]
+    CARDS: List[Card] = [
+        Card(value) for value, amount in CARD_AMOUNTS.items() for i in range(amount)
+    ]
 
     def __init__(self, player_names: List[str]):
         """
         Constructor method
         """
         if type(player_names) != list:
-            raise TypeError(f"The player names should be passed as a list. Not as {type(player_names)}")
+            raise TypeError(
+                f"The player names should be passed as a list. Not as {type(player_names)}"
+            )
 
         if len(player_names) not in ALLOWED_PLAYER_COUNTS:
-            raise ValueError(f"The list of the players should have length 2-4. The provided list has different length "
-                             f"= {len(player_names)}.")
+            raise ValueError(
+                f"The list of the players should have length 2-4. The provided list has different length "
+                f"= {len(player_names)}."
+            )
 
         self.player_name_list: List[str] = player_names
 
         _player_deque: deque = deque(player_names)
-        _player_deque.rotate(1)  # rotate player names to leave room for later rotation into original order
-        #TODO: consider reseting players id counter before creating them ?
+        _player_deque.rotate(
+            1
+        )  # rotate player names to leave room for later rotation into original order
+        # TODO: consider reseting players id counter before creating them ?
         self.players: List[Player] = [Player(name) for name in _player_deque]
-        self.rounds: List[Round] = []  # use it to remember the rounds - those should remember the turns
+        self.rounds: List[
+            Round
+        ] = []  # use it to remember the rounds - those should remember the turns
 
     def __repr__(self):
         """
@@ -90,12 +101,12 @@ class Game:
         Utility to report standings in between rounds
         :return: None (for now, printing a statement only)
         """
-        print('-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-')
-        print(f'Score after round {round.id}')
+        print("-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-")
+        print(f"Score after round {round.id}")
         for p in self.players:
             print(
-                f'{p.name}({p.id}) has {p.players_game_score}. With {p.get_players_score_in_round(round=round)} '
-                f'points obtained in latest round.'
+                f"{p.name}({p.id}) has {p.players_game_score}. With {p.get_players_score_in_round(round=round)} "
+                f"points obtained in latest round."
             )
         print("-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-")
 
@@ -104,11 +115,13 @@ class Game:
         Utility to report standings in between rounds
         :return: None (for now, printing a statement only)
         """
-        _sorted_players: List[Player] = sorted(self.players, key=lambda plr: plr.players_game_score, reverse=True)
+        _sorted_players: List[Player] = sorted(
+            self.players, key=lambda plr: plr.players_game_score, reverse=True
+        )
 
-        print('$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$')
-        print(f'Results of the game')
+        print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
+        print(f"Results of the game")
         for p_position, p in enumerate(_sorted_players):
-            print(f'{p_position + 1}. {p.name} with {p.players_game_score} points')
-        print(f'Congratulations, {_sorted_players[0].name}!!!')
+            print(f"{p_position + 1}. {p.name} with {p.players_game_score} points")
+        print(f"Congratulations, {_sorted_players[0].name}!!!")
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
