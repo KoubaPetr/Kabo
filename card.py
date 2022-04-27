@@ -1,13 +1,14 @@
 """
 Class Card
 """
+import collections
 from itertools import count
 from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
     from player import Player
 
-from rules import CARD_EFFECTS, CARD_LEGAL_VALUES
+from rules import CARD_EFFECTS, CARD_LEGAL_VALUES, NUM_KINDS_FOR_MULTIPLE_DISCARD
 
 
 class Card:
@@ -50,3 +51,17 @@ class Card:
         :return: str
         """
         return f"Card({self.value}), id = {self.id}"
+
+    @staticmethod
+    def check_card_list_consistency(cards: List["Card"]) -> bool:
+        """
+        Check whether given list contains cards of same value
+        :param cards: List[Card]
+        :return: bool, truth statment whether all cards in the list have same value
+        """
+        _card_vals = [c.value for c in cards]
+        _card_frequencies = collections.Counter(_card_vals)
+        if len(_card_frequencies) > NUM_KINDS_FOR_MULTIPLE_DISCARD:
+            return False
+        else:
+            return True

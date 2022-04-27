@@ -107,7 +107,7 @@ class Game:
         print(f"Score after round {round.id}")
         for p in self.players:
             print(
-                f"{p.name}({p.id}) has {p.players_game_score}. With {p.get_players_score_in_round(round=round)} "
+                f"{p} has {p.players_game_score}. With {p.get_players_score_in_round(round=round)} "
                 f"points obtained in latest round."
             )
         print("-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-")
@@ -124,6 +124,6 @@ class Game:
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
         print(f"Results of the game")
         for p_position, p in enumerate(_sorted_players):
-            print(f"{p_position + 1}. {p.name} with {p.players_game_score} points")
+            print(f"{p_position + 1}. {p} with {p.players_game_score} points")
         print(f"Congratulations, {_sorted_players[0].name}!!!")
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")

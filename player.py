@@ -26,9 +26,7 @@ class Player:
         self.name: str = name  # type checking of the input args?
         self.character: str = character  # type checking of the input args?
         self.hand: list = []
-        self.matched_100: bool = (
-            False  # by 100 we mean generally the Game.TARGET_POINT_VALUE
-        )
+        self.matched_100: bool = False  # 100 is generally the TARGET_POINT_VALUE
         self.players_game_score: int = 0
         self.id: int = next(self._id_incremental)
         self.called_kabo: bool = False
@@ -37,6 +35,13 @@ class Player:
             raise ValueError(
                 "Sofar only human players are supported, other kinds of agents will be implemented later"
             )
+
+    def __str__(self):
+        """
+        Dunder returning the text when instance of the class is passed to print()
+        :return: str
+        """
+        return f"Player {self.name} (id={self.id})"
 
     def __repr__(self):
         """
@@ -124,13 +129,25 @@ class Player:
             _play_next_round = True
         return _play_next_round
 
+    def check_knowledge_of_card(self, card: Card) -> bool:
+        """
+        function evaluating players knowledge of the card WITHOUT CONSIDERING PUBLIC VISIBILITY
+        :param card: Card, the card which we are interested in
+        :return: bool, True if Player knows the value of the card
+        """
+
+        if card in self.hand:  # the player is the owner
+            return card.known_to_owner
+        else:
+            return self in card.known_to_other_players
+
     def check_own_cards(
-        self, num_cards: int, which_hand_position: Optional[List[int]] = None
+        self, num_cards: int, which_position: Optional[List[int]] = None
     ) -> None:
         """
         Method to handle looking of the player at his/her own cards
         :param num_cards: int, number of own cards the player should see
-        :param which_hand_position: List[int], positions of the cards in the players hand
+        :param which_position: List[int], positions of the cards in the players hand
                                     (which the player wants to see)
         :return:
         """
@@ -142,12 +159,12 @@ class Player:
                 f"The desired number of cards to see = {num_cards} is out of range for hand of size {len(self.hand)}"
             )
 
-        if not isinstance(which_hand_position, list):
+        if not isinstance(which_position, list):
             raise TypeError(
-                f"which_hand_position should be list of ints, but it is {type(which_hand_position)}"
+                f"which_hand_position should be list of ints, but it is {type(which_position)}"
             )
 
-        for position in which_hand_position:
+        for position in which_position:
             if not isinstance(position, int):
                 raise TypeError(
                     f"which_hand_position should contain ints, but it contains {type(position)}"
@@ -157,13 +174,11 @@ class Player:
                     f"The desired position = {position} is out of range for hand of size {len(self.hand)}"
                 )
 
-        if (
-            not which_hand_position
-        ):  # unspecified positions, check cards in the order from the left
+        if not which_position:  # unspecified positions, check cards from the left
             for card in self.hand[:num_cards]:
                 card.visible_to_owner = True
         else:
-            for position in which_hand_position:
+            for position in which_position:
                 self.hand[position].visible_to_owner = True
 
     def card_checking_preference(self) -> List[int]:
@@ -171,9 +186,8 @@ class Player:
         Function which returns the positions of the cards that the player wants to look at the start of the round
         :return: List[int]
         """
-        return (
-            []
-        )  # TODO: for human player we can query him for his/her preference here - by default no preference
+        # TODO: for human player we can query him for his/her preference here - by default no preference
+        return []
 
     def reset_player_after_round(self) -> None:
         """
@@ -211,6 +225,21 @@ class Player:
         :param round: Round, current round
         :return:
         """
+        _top_discarded_card: Card = round.discard_pile.pop()
+        _cards_to_be_discarded: List[
+            Card
+        ] = self.pick_hand_cards_for_exchange()  # TODO: if multiple check corectness
+        _discarding_corectness = Card.check_card_list_consistency(
+            _cards_to_be_discarded
+        )
+        if _discarding_corectness:
+            for card in _cards_to_be_discarded:
+                round.discard_card(
+                    card
+                )  # TODO remove from hand but keep the free spot for the new card, only then collapse the hand
+        else:
+            pass  # TODO: put card to hand (argument position or extend the hand) - probably general function together with the above case
+
         ...  # TODO: implement me - if switching card decide on the position (or double, triple switch...)
 
     @staticmethod
@@ -230,13 +259,27 @@ class Player:
         """
         card.known_to_other_players.append(self)
 
-    def swap(self, own_card: Card, opponents_card: Card) -> None:
+    def swap(self, opponent: "Player", own_card: Card, opponents_card: Card) -> None:
         """
         perform the effect 'Swap' and exchange the given cards
+        :param opponent: Player, with whom to swap the card
         :param own_card: Card, from own hand belonging to 'self'
         :param opponents_card: Card, from opponents hand
         :return:
         """
-        ...  # TODO: implement me - be careful, owner changes - so handle for BOTH cards BOTH known to owner and known to other players!!!
+        # get card locations in hands
+        _idx_own: int = self.hand.index(own_card)
+        _idx_opponent: int = opponent.hand.index(opponents_card)
+
+        # switch cards
+        self.hand[_idx_own], opponent.hand[_idx_opponent] = opponents_card, own_card
+
+        # update knowledge of the cards to
+        opponents_card.known_to_owner = self.check_knowledge_of_card(opponents_card)
+        own_card.known_to_owner = opponent.check_knowledge_of_card(own_card)
 
     # TODO: implement the functions returning the players' decisions (on playing and on how to handle the card) - these might be overloaded based on players character (human/computer(type of agent...)) - check the polymorphism and inheritence in Python!
+
+    ### STRATEGY functions:
+    def pick_hand_cards_for_exchange(self):
+        ...  # TODO implement me

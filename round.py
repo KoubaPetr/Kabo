@@ -2,7 +2,8 @@
 Class Round
 """
 from itertools import count, cycle
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Dict, Optional
+import collections
 
 if TYPE_CHECKING:
     from player import Player
@@ -10,7 +11,13 @@ if TYPE_CHECKING:
 from random import shuffle
 
 from card import Card
-from rules import CARDS_PER_PLAYER, NUMBER_OF_CARDS_TO_SEE
+from rules import (
+    CARDS_PER_PLAYER,
+    NUMBER_OF_CARDS_TO_SEE,
+    NUMBER_OF_CARDS_FOR_KAMIKADZE,
+    KAMIKADZE_VALUES,
+    KAMIKADZE_PENALTY,
+)
 
 
 class Round:
@@ -45,7 +52,7 @@ class Round:
 
         # Init the discard pile
         _first_discarded_card: Card = self.main_deck.pop()
-        self._discard_card(_first_discarded_card)
+        self.discard_card(_first_discarded_card)
 
         # Start actions of players
         self._let_players_see_cards()
@@ -64,7 +71,7 @@ class Round:
                 _dealt_card: Card = self.main_deck.pop()
                 self._deal_single_card(_dealt_card, player)
 
-    def _discard_card(self, card: Card) -> None:
+    def discard_card(self, card: Card) -> None:
         """
         Method to put the given card from on top of the discard pile (and handle its visibility)
 
@@ -85,7 +92,7 @@ class Round:
         for player in self.players:
             _which_cards = player.card_checking_preference()
             player.check_own_cards(
-                num_cards=NUMBER_OF_CARDS_TO_SEE, which_hand_position=_which_cards
+                num_cards=NUMBER_OF_CARDS_TO_SEE, which_position=_which_cards
             )
 
     def _start_playing(self):
@@ -126,8 +133,34 @@ class Round:
         Function which invokes all players game score update
         :return:
         """
+        kamikadze_player = self._check_kamikadze()
+        if kamikadze_player:
+            for player in self.players:
+                if player != kamikadze_player:
+                    player.players_game_score += KAMIKADZE_PENALTY
+        else:
+            for player in self.players:
+                player.players_game_score += player.get_players_score_in_round(
+                    round=self
+                )
+
+    def _check_kamikadze(self) -> Optional["Player"]:
+        """
+        Check whether some player in this round reached Kamikadze
+        :return: Optional[Player], Player who reached Kamikadze (or None if no player reached it)
+        """
         for player in self.players:
-            player.players_game_score += player.get_players_score_in_round(round=self)
+            if len(player.hand) in NUMBER_OF_CARDS_FOR_KAMIKADZE:
+                _card_values: List[int] = [c.value for c in player.hand]
+                _card_frequencies: Dict[int, int] = collections.Counter(_card_values)
+                _player_activated_kamikadze: bool = True
+                for card_val, card_freq in KAMIKADZE_VALUES.items():
+                    if _card_frequencies[card_val] < card_freq:
+                        _player_activated_kamikadze = False
+                if _player_activated_kamikadze:
+                    print(f"{player}) achieved Kamikadze!!!")
+                    return player
+        return None
 
     @staticmethod
     def _deal_single_card(card: Card, player: "Player") -> None:

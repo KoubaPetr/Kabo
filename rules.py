@@ -22,12 +22,10 @@ CARD_AMOUNTS: Dict[int, int] = {
     12: 4,
     13: 2,
 }
-NUMBER_OF_CARDS_TO_SEE: int = (
-    2  # at the beginning of the Round, after the cards are dealt
-)
-CARDS_PER_PLAYER: int = (
-    4  # number of cards to be dealt to each player at the beginning of round
-)
+# at the beginning of the Round, after the cards are dealt
+NUMBER_OF_CARDS_TO_SEE: int = 2
+# number of cards to be dealt to each player at the beginning of round
+CARDS_PER_PLAYER: int = 4
 
 CARD_LEGAL_VALUES: Tuple[int, ...] = tuple([i for i in range(14)])
 CARD_EFFECTS: Dict[int, str] = {
@@ -41,3 +39,11 @@ CARD_EFFECTS: Dict[int, str] = {
 
 KABO_MALUS: int = 10
 ALLOWED_PLAYS: List[str] = ["KABO", "HIT_DECK", "HIT_DISCARD_PILE"]
+
+# edit if in the rules more than 4 are allowed
+NUMBER_OF_CARDS_FOR_KAMIKADZE: List[int] = [4]
+KAMIKADZE_VALUES: Dict[int, int] = {12: 2, 13: 2}
+KAMIKADZE_PENALTY: int = 50
+
+# when multi-discarding how many different values are allowed
+NUM_KINDS_FOR_MULTIPLE_DISCARD: int = 1
