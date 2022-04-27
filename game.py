@@ -1,6 +1,8 @@
+"""
+Class Game
+"""
 from collections import deque
 from typing import Dict, List
-
 from card import Card
 from player import Player
 from round import Round

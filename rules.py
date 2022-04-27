@@ -1,8 +1,7 @@
-from typing import Dict, List, Tuple
-
 """
 File holding all the constants relevant for the game (coming from the rules)
 """
+from typing import Dict, List, Tuple
 
 TARGET_POINT_VALUE: int = 100
 POINT_VALUE_AFTER_HITTING_TARGET: int = 50
