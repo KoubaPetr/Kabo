@@ -2,7 +2,7 @@
 Class Player
 """
 from itertools import count
-from typing import List, Optional
+from typing import List, Optional, Dict, TYPE_CHECKING, Callable
 from card import Card
 from round import Round
 from rules import ALLOWED_PLAYS, KABO_MALUS, POINT_VALUE_AFTER_HITTING_TARGET
@@ -19,6 +19,11 @@ class Player:
 
     _id_incremental: count = count(0)
 
+    ### Function from the child classes
+    pick_turn_type: Callable  # implemented in child class
+    pick_hand_cards_for_exchange: Callable
+    decide_on_card_use: Callable
+
     def __init__(self, name: str, character: str = "HUMAN"):
         """
         Constructor method
@@ -32,7 +37,7 @@ class Player:
         self.called_kabo: bool = False
 
         if character != "HUMAN":
-            raise ValueError(
+            raise NotImplementedError(
                 "Sofar only human players are supported, other kinds of agents will be implemented later"
             )
 
@@ -63,9 +68,10 @@ class Player:
         else:
             return False
 
-    def play_turn(self, round: Round) -> bool:
+    def perform_turn(self, round: Round) -> bool:
         """
         Instance method which performs the play of the player. Can be conditioned on self.character.
+        :param round: Round - current round being played
         :return: bool, representing whether the player called Kabo
         """
 
@@ -73,22 +79,24 @@ class Player:
         For human players this should take as an argument the type of move they want to play. For computer players,
         the move can be decided based on their character
         """
-        _players_play_decision = (
-            ...
-        )  # TODO: implement me - for human player just ask for his decision, for comp. call strategy
+        print(
+            f"Player {self.name}'s turn. {self.name}'s hand: {[str(c) for c in self.hand]}. Top of Discard Pile has {round.discard_pile[-1].value}. "
+        )
+        # CHECK: calling childs method, is it ok...?
+        players_play_decision: str = self.pick_turn_type()
 
-        if _players_play_decision == "KABO":
+        if players_play_decision == "KABO":
             self.call_kabo(round=round)
             return True
-        elif _players_play_decision == "HIT_DECK":
+        elif players_play_decision == "HIT_DECK":
             self.hit_deck(round=round)
             return False
-        elif _players_play_decision == "HIT_DISCARD_PILE":
+        elif players_play_decision == "HIT_DISCARD_PILE":
             self.hit_discard_pile(round=round)
             return False
         else:
             raise ValueError(
-                f"The attempted type of play = {_players_play_decision} is not supported. Supported plays are {ALLOWED_PLAYS}"
+                f"The attempted type of play = {players_play_decision} is not supported. Supported plays are {ALLOWED_PLAYS}"
             )
 
     def get_players_score_in_round(self, round: Round) -> int:
@@ -217,7 +225,9 @@ class Player:
         :param round: Round, current round
         :return:
         """
-        ...  # TODO: implement me - decide on using the effect (and how) or not, if switching card decide on the position (or double, triple switch...)
+        _new_card: Card = round.main_deck.pop()
+        decision_on_card = self.decide_on_card_use(_new_card)
+        # TODO: implement the rest based on the players decision (edit card status, ask what card to exchange, handle hand positioning of the cards etc. ...)
 
     def hit_discard_pile(self, round: Round) -> None:
         """
@@ -226,9 +236,7 @@ class Player:
         :return:
         """
         _top_discarded_card: Card = round.discard_pile.pop()
-        _cards_to_be_discarded: List[
-            Card
-        ] = self.pick_hand_cards_for_exchange()  # TODO: if multiple check corectness
+        _cards_to_be_discarded: List[Card] = self.pick_hand_cards_for_exchange()
         _discarding_corectness = Card.check_card_list_consistency(
             _cards_to_be_discarded
         )
@@ -239,8 +247,6 @@ class Player:
                 )  # TODO remove from hand but keep the free spot for the new card, only then collapse the hand
         else:
             pass  # TODO: put card to hand (argument position or extend the hand) - probably general function together with the above case
-
-        ...  # TODO: implement me - if switching card decide on the position (or double, triple switch...)
 
     @staticmethod
     def peak(card: Card) -> None:
@@ -279,7 +285,3 @@ class Player:
         own_card.known_to_owner = opponent.check_knowledge_of_card(own_card)
 
     # TODO: implement the functions returning the players' decisions (on playing and on how to handle the card) - these might be overloaded based on players character (human/computer(type of agent...)) - check the polymorphism and inheritence in Python!
-
-    ### STRATEGY functions:
-    def pick_hand_cards_for_exchange(self):
-        ...  # TODO implement me

@@ -110,7 +110,7 @@ class Round:
                 break
 
             current_player: "Player" = next(_players_cycle)
-            kabo_called = current_player.play_turn(round=self)
+            kabo_called = current_player.perform_turn(round=self)
 
             if kabo_called:
                 self.kabo_called = True

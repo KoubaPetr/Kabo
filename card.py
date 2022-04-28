@@ -52,6 +52,12 @@ class Card:
         """
         return f"Card({self.value}), id = {self.id}"
 
+    def __str__(self):
+        if self.publicly_visible:
+            return str(self.value)
+        else:
+            return "X"
+
     @staticmethod
     def check_card_list_consistency(cards: List["Card"]) -> bool:
         """

@@ -47,3 +47,5 @@ KAMIKADZE_PENALTY: int = 50
 
 # when multi-discarding how many different values are allowed
 NUM_KINDS_FOR_MULTIPLE_DISCARD: int = 1
+MAIN_DECK_CARD_DECISIONS: List[str] = ["KEEP", "DISCARD", "EFFECT"]
+DISCARD_PILE_CARD_DECISIONS: List[str] = ["KEEP", "DISCARD"]
