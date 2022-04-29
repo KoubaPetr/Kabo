@@ -4,7 +4,7 @@ which allowes interactive input by a user
 """
 from player import Player
 from rules import ALLOWED_PLAYS, MAIN_DECK_CARD_DECISIONS, DISCARD_PILE_CARD_DECISIONS
-from typing import List
+from typing import List, Optional, Type, Tuple
 from card import Card
 
 
@@ -22,7 +22,7 @@ class HumanPlayer(Player):
         gets the parents id (Player.id) and returns it as a hash
         :return: int
         """
-        return self.id
+        return self.player_id
 
     def pick_turn_type(self) -> str:
         """
@@ -41,13 +41,14 @@ class HumanPlayer(Player):
             )
         return input_turn
 
-    def pick_hand_cards_for_exchange(self) -> List[Card]:
+    def pick_hand_cards_for_exchange(self, drawn_card: Card) -> List[Card]:
         """
         Method which asks the player to input the positions of the cards in his/her hand which he/she wants to exchange
+        :param drawn_card: Card, the card drawn for which we want to exchange our card(s)
         :return: List[Card] , cards chosen for exchange
         """
         chosen_cards: str = input(
-            f"Pick the cards you wish to exchange (numbered from left in your hand = {[str(card) for card in self.hand]}\n"
+            f"You have drawn {drawn_card.value}. Pick the cards you wish to exchange (numbered from left in your hand = {[str(card) for card in self.hand]}\n"
         )
         chosen_cards = chosen_cards.strip()
         chosen_cards_list: List[str] = chosen_cards.split()
@@ -67,6 +68,10 @@ class HumanPlayer(Player):
                 raise TypeError(
                     f"Your inputed card position = {card_position} has to be int."
                 )
+        if not _selected_cards:  # no cards selected
+            raise ValueError(
+                "No cards were selected for exchange, but you already decided to keep the newly drawn card."
+            )
 
         return _selected_cards
 
@@ -96,3 +101,47 @@ class HumanPlayer(Player):
             )
         else:
             return input_decision
+
+    def pick_position_for_new_card(
+        self, available_positions=List[int]
+    ) -> Optional[int]:
+        """
+        method to select where to put the new card out of the free slots freed by the discarded cards
+        :param available_positions: List[int] list of available positions in players hand
+        :return:
+        """
+        if len(available_positions) > 1:
+            picked_position: str = input(
+                f"Pick position in your hand, where to place the new card. Available positions: {available_positions}"
+            )
+        elif len(available_positions) == 1:
+            picked_position = available_positions[0]
+        elif len(available_positions) == 0:
+            print(
+                "No position for placing the card was made available. The card wont be kept."
+            )
+            return None
+        print(f"Your new card is being placed at position {picked_position}")
+        return int(picked_position)
+
+    def pick_cards_to_see(self, num_cards_to_see: int) -> List[int]:
+        """
+        Ask the human player to specify positions of the card/cards (based on num_cards_to_see) which he/she wants to see
+        :param num_cards_to_see: int
+        :return:
+        """
+        ...  # TODO: implement me
+
+    def specify_spying(self) -> Tuple[Type[Player], Card]:
+        """
+        Ask the human player which player he/she wants to spy on and which card he/she wants to spy
+        :return: Tuple[Type[Player],Card]
+        """
+        ...  # TODO: implement me, return Card, not just idx
+
+    def specify_swap(self) -> Tuple[Type[Player], int, int]:
+        """
+        Ask the human player which player he/she wants to swap with and which cards he/she wants to swap (specified by idx)
+        :return: Tuple[Type[Player],int,int] opponent, own_card_idx, opponents_card_idx
+        """
+        ...  # TODO: implement me, return Cards, not just idcs

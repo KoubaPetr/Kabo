@@ -2,7 +2,7 @@
 Class Player
 """
 from itertools import count
-from typing import List, Optional, Dict, TYPE_CHECKING, Callable
+from typing import List, Optional, Callable, Type, Tuple
 from card import Card
 from round import Round
 from rules import ALLOWED_PLAYS, KABO_MALUS, POINT_VALUE_AFTER_HITTING_TARGET
@@ -23,6 +23,10 @@ class Player:
     pick_turn_type: Callable  # implemented in child class
     pick_hand_cards_for_exchange: Callable
     decide_on_card_use: Callable
+    pick_position_for_new_card: Callable
+    pick_cards_to_see: Callable
+    specify_swap: Callable
+    specify_spying: Callable
 
     def __init__(self, name: str, character: str = "HUMAN"):
         """
@@ -33,7 +37,7 @@ class Player:
         self.hand: list = []
         self.matched_100: bool = False  # 100 is generally the TARGET_POINT_VALUE
         self.players_game_score: int = 0
-        self.id: int = next(self._id_incremental)
+        self.player_id: int = next(self._id_incremental)
         self.called_kabo: bool = False
 
         if character != "HUMAN":
@@ -46,7 +50,7 @@ class Player:
         Dunder returning the text when instance of the class is passed to print()
         :return: str
         """
-        return f"Player {self.name} (id={self.id})"
+        return f"Player {self.name} (id={self.player_id})"
 
     def __repr__(self):
         """
@@ -63,43 +67,36 @@ class Player:
         """
         if not isinstance(other, Player):
             return False
-        if other.id == self.id and other.name == self.name:
-            return True
-        else:
-            return False
+        return bool(other.player_id == self.player_id and other.name == self.name)
 
-    def perform_turn(self, round: Round) -> bool:
+    def perform_turn(self, _round: Round) -> bool:
         """
         Instance method which performs the play of the player. Can be conditioned on self.character.
-        :param round: Round - current round being played
+        :param _round: Round - current round being played
         :return: bool, representing whether the player called Kabo
         """
 
-        """
-        For human players this should take as an argument the type of move they want to play. For computer players,
-        the move can be decided based on their character
-        """
         print(
-            f"Player {self.name}'s turn. {self.name}'s hand: {[str(c) for c in self.hand]}. Top of Discard Pile has {round.discard_pile[-1].value}. "
+            f"Player {self.name}'s turn. {self.name}'s hand: {[str(c) for c in self.hand]}. Top of Discard Pile has {_round.discard_pile[-1].value}. "
         )
         # CHECK: calling childs method, is it ok...?
         players_play_decision: str = self.pick_turn_type()
 
         if players_play_decision == "KABO":
-            self.call_kabo(round=round)
+            self.call_kabo(_round=_round)
             return True
-        elif players_play_decision == "HIT_DECK":
-            self.hit_deck(round=round)
+        if players_play_decision == "HIT_DECK":
+            self.hit_deck(_round=_round)
             return False
-        elif players_play_decision == "HIT_DISCARD_PILE":
-            self.hit_discard_pile(round=round)
+        if players_play_decision == "HIT_DISCARD_PILE":
+            self.hit_discard_pile(_round=_round)
             return False
-        else:
-            raise ValueError(
-                f"The attempted type of play = {players_play_decision} is not supported. Supported plays are {ALLOWED_PLAYS}"
-            )
 
-    def get_players_score_in_round(self, round: Round) -> int:
+        raise ValueError(
+            f"The attempted type of play = {players_play_decision} is not supported. Supported plays are {ALLOWED_PLAYS}"
+        )
+
+    def get_players_score_in_round(self, _round: Round) -> int:
         """
         Function to look through the hand of the player and count his score - Only reflects the score in the round!
         :param: Round, round in which we want to get the players score
@@ -109,17 +106,17 @@ class Player:
 
         if not self.called_kabo:
             return _sum_hand
-        else:
-            _other_player_scores: List[int] = [
-                plr.get_players_score_in_round(round)
-                for plr in round.players
-                if plr != self
-            ]
 
-            if min(_other_player_scores) < _sum_hand:  # Kabo successful
-                return 0
-            else:
-                return _sum_hand + KABO_MALUS  # Kabo failed
+        _other_player_scores: List[int] = [
+            plr.get_players_score_in_round(_round)
+            for plr in _round.players
+            if plr != self
+        ]
+
+        if min(_other_player_scores) < _sum_hand:  # Kabo successful
+            return 0
+
+        return _sum_hand + KABO_MALUS  # Kabo failed
 
     def reached_score_100(self) -> bool:
         """
@@ -146,8 +143,8 @@ class Player:
 
         if card in self.hand:  # the player is the owner
             return card.known_to_owner
-        else:
-            return self in card.known_to_other_players
+
+        return self in card.known_to_other_players
 
     def check_own_cards(
         self, num_cards: int, which_position: Optional[List[int]] = None
@@ -194,8 +191,8 @@ class Player:
         Function which returns the positions of the cards that the player wants to look at the start of the round
         :return: List[int]
         """
-        # TODO: for human player we can query him for his/her preference here - by default no preference
-        return []
+        chosen_cards: List[int] = self.pick_cards_to_see(num_cards_to_see=2)
+        return chosen_cards  # by default no preference (checking from left) can be empty list [] if no preference
 
     def reset_player_after_round(self) -> None:
         """
@@ -208,80 +205,140 @@ class Player:
 
     # TURNS:
 
-    def call_kabo(self, round: Round) -> None:
+    def call_kabo(self, _round: Round) -> None:
         """
         Method to perform the logic of player calling Kabo
         :param: Round, current round
         :return:
         """
-        if round.kabo_called:
-            raise ValueError(f"Kabo cannot be called twice in the same round!")
+        if _round.kabo_called:
+            raise ValueError("Kabo cannot be called twice in the same round!")
 
         self.called_kabo = True
 
-    def hit_deck(self, round: Round) -> None:
+    def hit_deck(self, _round: Round) -> None:
         """
         Method to perform the logic of player hitting the main deck for a new card
-        :param round: Round, current round
+        :param _round: Round, current round
         :return:
         """
-        _new_card: Card = round.main_deck.pop()
-        decision_on_card = self.decide_on_card_use(_new_card)
-        # TODO: implement the rest based on the players decision (edit card status, ask what card to exchange, handle hand positioning of the cards etc. ...)
+        _drawn_card: Card = _round.main_deck.pop()
+        decision_on_card = self.decide_on_card_use(_drawn_card)
+        match decision_on_card:
+            case "KEEP":
+                self.keep_drawn_card(drawn_card=_drawn_card, _round=_round)
+            case "DISCARD":
+                _round.discard_card(_drawn_card)
+            case "EFFECT":
+                effect_to_function = {
+                    "KUK": Player.peak,
+                    "ŠPION": self.spy,
+                    "KŠEFT": self.swap,
+                }  # TODO: place elsewhere?
+                effect_function = effect_to_function[_drawn_card.effect]
+                effect_function()
 
-    def hit_discard_pile(self, round: Round) -> None:
+    def hit_discard_pile(self, _round: Round) -> None:
         """
         Method to perform the logic of player hitting the discard pile for a new card - this one is publicly visible
-        :param round: Round, current round
+        :param _round: Round, current round
         :return:
         """
-        _top_discarded_card: Card = round.discard_pile.pop()
-        _cards_to_be_discarded: List[Card] = self.pick_hand_cards_for_exchange()
+        _top_discarded_card: Card = _round.discard_pile.pop()
+        # here we assume visible card is automatically kept
+        self.keep_drawn_card(_top_discarded_card, _round)
+
+    def keep_drawn_card(self, drawn_card: Card, _round: Round) -> None:
+        """
+        invoked when player decided he/she wants to keep the drawn card
+        :param drawn_card: Card, drawn from MAIN_DECK or DISCARD_PILE - to be kept
+        :param _round: Round, current round
+        :return:
+        """
+        drawn_card.status = "HAND"
+        drawn_card.known_to_owner = True
+
+        _cards_to_be_discarded: List[Card] = self.pick_hand_cards_for_exchange(
+            drawn_card=drawn_card
+        )
         _discarding_corectness = Card.check_card_list_consistency(
             _cards_to_be_discarded
         )
         if _discarding_corectness:
-            for card in _cards_to_be_discarded:
-                round.discard_card(
-                    card
-                )  # TODO remove from hand but keep the free spot for the new card, only then collapse the hand
+            self.perform_card_exchange(_cards_to_be_discarded, drawn_card, _round)
         else:
-            pass  # TODO: put card to hand (argument position or extend the hand) - probably general function together with the above case
+            self.failed_multi_exchange(drawn_card)
 
-    @staticmethod
-    def peak(card: Card) -> None:
+    def perform_card_exchange(
+        self, cards_selected_for_exchange: List[Card], drawn_card: Card, _round: Round
+    ) -> None:
         """
-        perform the effect 'Peak' and check the given card
-        :param card: Card, the card to be peaked at as decided by the player
+        Perform
+        :param cards_selected_for_exchange: List[Card] cards selected by the player for discarding (in exchange for a new card)
+        :param drawn_card: Card, new drawn card which will be kept in players hand
+        :param _round: Round, current round
         :return:
         """
-        card.known_to_owner = True
+        _free_slots: List[int] = []
+        for card in cards_selected_for_exchange:
+            _round.discard_card(card)
+            _card_idx: int = self.hand.index(card)
+            _free_slots.append(_card_idx)
+            self.hand[_card_idx] = None
 
-    def spy(self, card: Card) -> None:
+        position_for_new_card: Optional[int] = self.pick_position_for_new_card(
+            _free_slots
+        )
+        if position_for_new_card:
+            self.hand[position_for_new_card] = drawn_card
+            self.hand = [c for c in self.hand if c]  # filter Nones
+        else:
+            _round.discard_card(drawn_card)
+
+    def failed_multi_exchange(self, drawn_card: Card) -> None:
         """
-        perform the effect 'Spy' and check the given card
-        :param card: Card, the card to be spied at as decided by the player
+        invoked when multi exchange card was attempted but inconsistent cards were selected for exchange
+        :param drawn_card: Card, drawn card to be added to hand
         :return:
         """
-        card.known_to_other_players.append(self)
+        self.hand.append(drawn_card)
 
-    def swap(self, opponent: "Player", own_card: Card, opponents_card: Card) -> None:
+    def peak(self) -> None:
         """
-        perform the effect 'Swap' and exchange the given cards
-        :param opponent: Player, with whom to swap the card
-        :param own_card: Card, from own hand belonging to 'self'
-        :param opponents_card: Card, from opponents hand
+        perform the effect 'Peak' and ask the player which card he/she wants to see, and show it to him/her
         :return:
         """
-        # get card locations in hands
-        _idx_own: int = self.hand.index(own_card)
-        _idx_opponent: int = opponent.hand.index(opponents_card)
+        card__idx_to_be_seen: List[int] = self.pick_cards_to_see(num_cards_to_see=1)
+        self.hand[card__idx_to_be_seen].known_to_owner = True
+
+    def spy(self) -> None:
+        """
+        perform the effect 'Spy' and ask the player what opponent and what card he/she wants to see
+        :return:
+        """
+        spying_specs: Tuple[Type[Player], Card] = self.specify_spying()
+        spied_opponent, spied_card_idx = spying_specs
+        spied_opponent.hand[spied_card_idx].known_to_other_players.append(self)
+
+    def swap(self) -> None:
+        """
+        perform the effect 'Swap' and ask the player to specify details (opponent and involved cards)
+        :return:
+        """
+        swapping_specs: Tuple[Type[Player], int, int] = self.specify_swap()
+        opponent, own_card_idx, opponents_card_idx = swapping_specs
 
         # switch cards
-        self.hand[_idx_own], opponent.hand[_idx_opponent] = opponents_card, own_card
+        self.hand[own_card_idx], opponent.hand[opponents_card_idx] = (
+            opponent.hand[opponents_card_idx],
+            self.hand[own_card_idx],
+        )
+
+        # after exchange
+        opponents_card = opponent.hand[opponents_card_idx]
+        own_card = self.hand[own_card_idx]
 
         # update knowledge of the cards to
-        opponents_card.known_to_owner = self.check_knowledge_of_card(opponents_card)
-        own_card.known_to_owner = opponent.check_knowledge_of_card(own_card)
-
-    # TODO: implement the functions returning the players' decisions (on playing and on how to handle the card) - these might be overloaded based on players character (human/computer(type of agent...)) - check the polymorphism and inheritence in Python!
+        # TODO: below: remove the owner from 'known to other players" (could be done as a setter of known_to_owner)
+        opponents_card.known_to_owner = opponent.check_knowledge_of_card(opponents_card)
+        own_card.known_to_owner = self.check_knowledge_of_card(own_card)

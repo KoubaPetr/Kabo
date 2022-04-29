@@ -107,7 +107,7 @@ class Game:
         print(f"Score after round {round.id}")
         for p in self.players:
             print(
-                f"{p} has {p.players_game_score}. With {p.get_players_score_in_round(round=round)} "
+                f"{p} has {p.players_game_score}. With {p.get_players_score_in_round(_round=round)} "
                 f"points obtained in latest round."
             )
         print("-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-")

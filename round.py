@@ -110,7 +110,7 @@ class Round:
                 break
 
             current_player: "Player" = next(_players_cycle)
-            kabo_called = current_player.perform_turn(round=self)
+            kabo_called = current_player.perform_turn(_round=self)
 
             if kabo_called:
                 self.kabo_called = True
@@ -141,7 +141,7 @@ class Round:
         else:
             for player in self.players:
                 player.players_game_score += player.get_players_score_in_round(
-                    round=self
+                    _round=self
                 )
 
     def _check_kamikadze(self) -> Optional["Player"]:
