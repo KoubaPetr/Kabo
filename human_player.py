@@ -144,15 +144,15 @@ class HumanPlayer(Player):
         else:
             raise ValueError(f"Invalid number of cards to see {num_cards_to_see}.")
 
-        picked_positions = picked_positions.strip().split()
+        picked_positions_list = picked_positions.strip().split()
         picked_indices: List[int]
         try:
-            picked_indices = [int(p) for p in picked_positions]
+            picked_indices = [int(p) for p in picked_positions_list]
         except:
             raise ValueError(
                 f"Specified positions of cards to see should be convertable to int. You entered {picked_positions}"
             )
-        if len(picked_positions) != num_cards_to_see:
+        if len(picked_positions_list) != num_cards_to_see:
             raise ValueError(
                 f"You didnt select enough cards to look at. You should look at {num_cards_to_see}"
             )
