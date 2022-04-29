@@ -2,7 +2,7 @@
 Class Player
 """
 from itertools import count
-from typing import List, Optional, Callable, Type, Tuple
+from typing import List, Optional, Callable, Type, Tuple, Dict
 from card import Card
 from round import Round
 from rules import ALLOWED_PLAYS, KABO_MALUS, POINT_VALUE_AFTER_HITTING_TARGET
@@ -230,12 +230,12 @@ class Player:
             case "DISCARD":
                 _round.discard_card(_drawn_card)
             case "EFFECT":
-                effect_to_function = {
+                effect_to_function: Dict[str, Callable] = {
                     "KUK": Player.peak,
                     "ŠPION": self.spy,
                     "KŠEFT": self.swap,
                 }  # TODO: place elsewhere?
-                effect_function = effect_to_function[_drawn_card.effect]
+                effect_function: Callable = effect_to_function[_drawn_card.effect]
                 effect_function()
 
     def hit_discard_pile(self, _round: Round) -> None:
@@ -308,8 +308,8 @@ class Player:
         perform the effect 'Peak' and ask the player which card he/she wants to see, and show it to him/her
         :return:
         """
-        card__idx_to_be_seen: List[int] = self.pick_cards_to_see(num_cards_to_see=1)
-        self.hand[card__idx_to_be_seen].known_to_owner = True
+        card_idx_to_be_seen: List[int] = self.pick_cards_to_see(num_cards_to_see=1)
+        self.hand[card_idx_to_be_seen[0]].known_to_owner = True
 
     def spy(self) -> None:
         """
@@ -317,8 +317,8 @@ class Player:
         :return:
         """
         spying_specs: Tuple[Type[Player], Card] = self.specify_spying()
-        spied_opponent, spied_card_idx = spying_specs
-        spied_opponent.hand[spied_card_idx].known_to_other_players.append(self)
+        spied_opponent, spied_card = spying_specs
+        spied_card.known_to_other_players.append(self)
 
     def swap(self) -> None:
         """
@@ -335,10 +335,12 @@ class Player:
         )
 
         # after exchange
-        opponents_card = opponent.hand[opponents_card_idx]
-        own_card = self.hand[own_card_idx]
+        opponents_card: Card = opponent.hand[opponents_card_idx]
+        own_card: Card = self.hand[own_card_idx]
 
         # update knowledge of the cards to
         # TODO: below: remove the owner from 'known to other players" (could be done as a setter of known_to_owner)
-        opponents_card.known_to_owner = opponent.check_knowledge_of_card(opponents_card)
-        own_card.known_to_owner = self.check_knowledge_of_card(own_card)
+        opponents_card.known_to_owner = opponent.check_knowledge_of_card(
+            card=opponents_card
+        )
+        own_card.known_to_owner = self.check_knowledge_of_card(card=own_card)
