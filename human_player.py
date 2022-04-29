@@ -30,7 +30,7 @@ class HumanPlayer(Player):
         :return: str , play type chosen by the human player
         """
         input_turn: str = input(
-            "Choose your type of play KABO/HIT_DECK/HIT_DISCARD_PILE\n"
+            f"{self.name}: Choose your type of play KABO/HIT_DECK/HIT_DISCARD_PILE\n"
         )
         input_turn = input_turn.strip()
         input_turn = input_turn.upper()
@@ -48,7 +48,7 @@ class HumanPlayer(Player):
         :return: List[Card] , cards chosen for exchange
         """
         chosen_cards: str = input(
-            f"You have drawn {drawn_card.value}. Pick the cards you wish to exchange (numbered from left in your hand = {[str(card) for card in self.hand]}\n"
+            f"{self.name}: You have drawn {drawn_card.value}. Pick the cards you wish to exchange (numbered from left in your hand = {[str(card) for card in self.hand]}\n"
         )
         chosen_cards = chosen_cards.strip()
         chosen_cards_list: List[str] = chosen_cards.split()
@@ -86,11 +86,11 @@ class HumanPlayer(Player):
 
         if not card.effect:
             input_decision = input(
-                f"You have drawn the Card {card.value} do you want to KEEP it or DISCARD it?\n"
+                f"{self.name}: You have drawn the Card {card.value} do you want to KEEP it or DISCARD it?\n"
             )
         else:
             input_decision = input(
-                f"You have drawn the Card {card.value} {card.effect} do you want to KEEP it, DISCARD it or play the effect?\n"
+                f"{self.name}: You have drawn the Card {card.value} {card.effect} do you want to KEEP it, DISCARD it or play the effect?\n"
             )
         input_decision = input_decision.strip()
         input_decision = input_decision.upper()
@@ -112,16 +112,18 @@ class HumanPlayer(Player):
         """
         if len(available_positions) > 1:
             picked_position: str = input(
-                f"Pick position in your hand, where to place the new card. Available positions: {available_positions}"
+                f"{self.name}: Pick position in your hand, where to place the new card. Available positions: {available_positions}\n"
             )
         elif len(available_positions) == 1:
             picked_position = available_positions[0]
         elif len(available_positions) == 0:
             print(
-                "No position for placing the card was made available. The card wont be kept."
+                f"No position for placing the card was made available. The card wont be kept."
             )
             return None
-        print(f"Your new card is being placed at position {picked_position}")
+        print(
+            f"{self.name}: Your new card is being placed at position {picked_position}"
+        )
         return int(picked_position)
 
     def pick_cards_to_see(self, num_cards_to_see: int) -> List[int]:
@@ -130,7 +132,31 @@ class HumanPlayer(Player):
         :param num_cards_to_see: int
         :return:
         """
-        ...  # TODO: implement me
+        picked_positions: str
+        if num_cards_to_see > 1:
+            picked_positions = input(
+                f"{self.name}: Pick cards in your hand, which you want to see. Specify them by card index separated by space.\n"
+            )
+        elif num_cards_to_see == 1:
+            picked_positions = input(
+                f"{self.name}: Pick cards in your hand, which you want to see. Specify them by card index separated by space.\n"
+            )
+        else:
+            raise ValueError(f"Invalid number of cards to see {num_cards_to_see}.")
+
+        picked_positions = picked_positions.strip().split()
+        picked_indices: List[int]
+        try:
+            picked_indices = [int(p) for p in picked_positions]
+        except:
+            raise ValueError(
+                f"Specified positions of cards to see should be convertable to int. You entered {picked_positions}"
+            )
+        if len(picked_positions) != num_cards_to_see:
+            raise ValueError(
+                f"You didnt select enough cards to look at. You should look at {num_cards_to_see}"
+            )
+        return picked_indices
 
     def specify_spying(self) -> Tuple[Type[Player], Card]:
         """
@@ -145,3 +171,12 @@ class HumanPlayer(Player):
         :return: Tuple[Type[Player],int,int] opponent, own_card_idx, opponents_card_idx
         """
         ...  # TODO: implement me, return Cards, not just idcs
+
+    def report_known_cards_on_hand(self) -> None:
+        """
+        #TODO:
+        :return:
+        """
+        print(
+            f"{self.name}, your cards are:{[c.value if c.known_to_owner or c.publicly_visible else 'X' for c in self.hand]}"
+        )

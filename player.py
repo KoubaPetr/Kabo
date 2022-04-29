@@ -27,6 +27,7 @@ class Player:
     pick_cards_to_see: Callable
     specify_swap: Callable
     specify_spying: Callable
+    report_known_cards_on_hand: Callable
 
     def __init__(self, name: str, character: str = "HUMAN"):
         """
@@ -181,10 +182,10 @@ class Player:
 
         if not which_position:  # unspecified positions, check cards from the left
             for card in self.hand[:num_cards]:
-                card.visible_to_owner = True
+                card.known_to_owner = True
         else:
             for position in which_position:
-                self.hand[position].visible_to_owner = True
+                self.hand[position].known_to_owner = True
 
     def card_checking_preference(self) -> List[int]:
         """

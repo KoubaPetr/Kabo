@@ -94,6 +94,7 @@ class Round:
             player.check_own_cards(
                 num_cards=NUMBER_OF_CARDS_TO_SEE, which_position=_which_cards
             )
+            player.report_known_cards_on_hand()
 
     def _start_playing(self):
         """
