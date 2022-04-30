@@ -2,7 +2,7 @@
 Class Round
 """
 from itertools import count, cycle
-from typing import TYPE_CHECKING, List, Dict, Optional
+from typing import TYPE_CHECKING, List, Dict, Optional, Type
 import collections
 
 if TYPE_CHECKING:
@@ -36,7 +36,7 @@ class Round:
         """
         # Init round attributes
         self.id: int = next(self._id_incremental)
-        self.players: List["Player"] = players
+        self.players: List[Type[Player]] = players
         self.kabo_called: bool = (
             False  # indicator whether kabo was called in this round already
         )
@@ -128,6 +128,14 @@ class Round:
 
         for player in self.players:
             player.reset_player_after_round()
+
+    def get_player_by_name(self, name: str) -> Type[Player]:
+        """
+        helper method to search for a player in the round, by his/her name
+        :param name: str, name of the player to be searched for
+        :return:
+        """
+        return [player for player in self.players if player.name == name][0]
 
     def _update_players_game_scores(self) -> None:
         """

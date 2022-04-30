@@ -33,7 +33,9 @@ class Player:
         """
         Constructor method
         """
-        self.name: str = name  # type checking of the input args?
+        self.name: str = (
+            name.upper()
+        )  # type checking of the input args? #capitalize in the setter
         self.character: str = character  # type checking of the input args?
         self.hand: list = []
         self.matched_100: bool = False  # 100 is generally the TARGET_POINT_VALUE

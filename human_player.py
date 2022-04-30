@@ -3,6 +3,7 @@ Class HumanPlayer is a subclass of Player class, which specifies Players playing
 which allowes interactive input by a user
 """
 from player import Player
+from round import Round
 from rules import ALLOWED_PLAYS, MAIN_DECK_CARD_DECISIONS, DISCARD_PILE_CARD_DECISIONS
 from typing import List, Optional, Type, Tuple
 from card import Card
@@ -158,12 +159,39 @@ class HumanPlayer(Player):
             )
         return picked_indices
 
-    def specify_spying(self) -> Tuple[Type[Player], Card]:
+    def specify_spying(self, _round: Round) -> Tuple[Type[Player], Card]:
         """
         Ask the human player which player he/she wants to spy on and which card he/she wants to spy
+        :param _round: Round, current round
         :return: Tuple[Type[Player],Card]
         """
         ...  # TODO: implement me, return Card, not just idx
+        available_players: List[str] = [p.name for p in _round.players if p != self]
+        input_name: str = input(
+            f"{self.name}, please specify the opponent you wish to spy on, valid names are: {available_players}\n"
+        )
+        input_name = input_name.strip().upper()
+        if input_name not in available_players:
+            raise ValueError(f"Unknown opponent {input_name}")
+
+        opponent_to_be_spied: Type[Player] = _round.get_player_by_name(input_name)
+        input_position: str = input(
+            f"{self.name}, please specify the card of {opponent_to_be_spied.name} you wish to spy, "
+            f"{self.name}'s hand is: {[print(c) for c in opponent_to_be_spied.hand]}\n"
+        )
+        input_position = input_position.strip().upper()
+        try:
+            input_position_idx: int = int(input_position)
+            if input_position_idx not in range(len(opponent_to_be_spied.hand)):
+                raise ValueError(
+                    f"Specified card is out of range for {opponent_to_be_spied}'s hand"
+                )
+        except:
+            raise TypeError(
+                f"The input card position should be convertable to int. You have entered {input_position}"
+            )
+        spied_card: Card = opponent_to_be_spied.hand[input_position_idx]
+        return opponent_to_be_spied, spied_card
 
     def specify_swap(self) -> Tuple[Type[Player], int, int]:
         """
@@ -174,7 +202,7 @@ class HumanPlayer(Player):
 
     def report_known_cards_on_hand(self) -> None:
         """
-        #TODO:
+        Helper method to print the cards based on the knowledge to the owner on public visibility
         :return:
         """
         print(
