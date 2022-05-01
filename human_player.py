@@ -125,7 +125,7 @@ class HumanPlayer(Player):
         print(
             f"{self.name}: Your new card is being placed at position {picked_position}"
         )
-        return int(picked_position)
+        return int(picked_position)  # not checking input whether it can be int
 
     def pick_cards_to_see(self, num_cards_to_see: int) -> List[int]:
         """
@@ -140,7 +140,7 @@ class HumanPlayer(Player):
             )
         elif num_cards_to_see == 1:
             picked_positions = input(
-                f"{self.name}: Pick cards in your hand, which you want to see. Specify them by card index separated by space.\n"
+                f"{self.name}: Pick card in your hand, which you want to see. Specify it by card index.\n"
             )
         else:
             raise ValueError(f"Invalid number of cards to see {num_cards_to_see}.")
@@ -165,7 +165,6 @@ class HumanPlayer(Player):
         :param _round: Round, current round
         :return: Tuple[Type[Player],Card]
         """
-        ...  # TODO: implement me, return Card, not just idx
         available_players: List[str] = [p.name for p in _round.players if p != self]
         input_name: str = input(
             f"{self.name}, please specify the opponent you wish to spy on, valid names are: {available_players}\n"
@@ -177,14 +176,14 @@ class HumanPlayer(Player):
         opponent_to_be_spied: Type[Player] = _round.get_player_by_name(input_name)
         input_position: str = input(
             f"{self.name}, please specify the card of {opponent_to_be_spied.name} you wish to spy, "
-            f"{self.name}'s hand is: {[print(c) for c in opponent_to_be_spied.hand]}\n"
+            f"{opponent_to_be_spied}'s hand is: {[print(c) for c in opponent_to_be_spied.hand]}\n"
         )
-        input_position = input_position.strip().upper()
+        input_position = input_position.strip()
         try:
             input_position_idx: int = int(input_position)
             if input_position_idx not in range(len(opponent_to_be_spied.hand)):
                 raise ValueError(
-                    f"Specified card is out of range for {opponent_to_be_spied}'s hand"
+                    f"Specified card is out of range for {opponent_to_be_spied.name}'s hand"
                 )
         except:
             raise TypeError(
@@ -193,12 +192,55 @@ class HumanPlayer(Player):
         spied_card: Card = opponent_to_be_spied.hand[input_position_idx]
         return opponent_to_be_spied, spied_card
 
-    def specify_swap(self) -> Tuple[Type[Player], int, int]:
+    def specify_swap(self, _round: Round) -> Tuple[Type[Player], int, int]:
         """
         Ask the human player which player he/she wants to swap with and which cards he/she wants to swap (specified by idx)
+        :param _round: Round, current round
         :return: Tuple[Type[Player],int,int] opponent, own_card_idx, opponents_card_idx
         """
-        ...  # TODO: implement me, return Cards, not just idcs
+        # Get own card for swap
+        own_card_input: str = input(
+            f"{self.name}, please specify the position of your card you wish to swap, "
+            f"Your hand is: {[print(c) for c in self.hand]}\n"
+        )
+        own_card_input = own_card_input.strip()
+        try:
+            own_card_idx: int = int(own_card_input)
+            if own_card_idx not in range(len(self.hand)):
+                raise ValueError(f"Specified card is out of range for your hand")
+        except:
+            raise TypeError(
+                f"The input card position should be convertable to int. You have entered {own_card_input}"
+            )  # TODO: code repetition to be fixed
+
+        # Get opponent for swap
+        available_players: List[str] = [p.name for p in _round.players if p != self]
+        input_name: str = input(
+            f"{self.name}, please specify the opponent you wish to swap with, valid names are: {available_players}\n"
+        )
+        input_name = input_name.strip().upper()
+        if input_name not in available_players:
+            raise ValueError(f"Unknown opponent {input_name}")
+
+        opponent_for_swap: Type[Player] = _round.get_player_by_name(input_name)
+        input_position: str = input(
+            f"{self.name}, please specify the card of {opponent_for_swap.name} you wish to swap, "
+            f"{opponent_for_swap.name}'s hand is: {[print(c) for c in opponent_for_swap.hand]}\n"
+        )
+
+        # Get opponents card for swap
+        input_position = input_position.strip()
+        try:
+            spied_card_idx: int = int(input_position)
+            if spied_card_idx not in range(len(opponent_for_swap.hand)):
+                raise ValueError(
+                    f"Specified card is out of range for {opponent_for_swap.name}'s hand"
+                )
+        except:
+            raise TypeError(
+                f"The input card position should be convertable to int. You have entered {input_position}"
+            )
+        return opponent_for_swap, own_card_idx, spied_card_idx
 
     def report_known_cards_on_hand(self) -> None:
         """
@@ -208,3 +250,15 @@ class HumanPlayer(Player):
         print(
             f"{self.name}, your cards are:{[c.value if c.known_to_owner or c.publicly_visible else 'X' for c in self.hand]}"
         )
+
+    def tell_player_card_value(self, card: Card, effect: str) -> None:
+        """
+
+        :param card: Card, the card which value we want to tell the player
+        :param effect: str, the effect from which this was invokec
+        :return:
+        """
+        if effect == "PEAK":
+            print(f"The value of your card you have peaked on is: {card.value}")
+        else:
+            print(f"The value of the card you have spied on is: {card.value}")

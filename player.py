@@ -28,6 +28,7 @@ class Player:
     specify_swap: Callable
     specify_spying: Callable
     report_known_cards_on_hand: Callable
+    tell_player_card_value: Callable
 
     def __init__(self, name: str, character: str = "HUMAN"):
         """
@@ -234,12 +235,15 @@ class Player:
                 _round.discard_card(_drawn_card)
             case "EFFECT":
                 effect_to_function: Dict[str, Callable] = {
-                    "KUK": Player.peak,
+                    "KUK": self.peak,
                     "ŠPION": self.spy,
                     "KŠEFT": self.swap,
                 }  # TODO: place elsewhere?
                 effect_function: Callable = effect_to_function[_drawn_card.effect]
-                effect_function()
+                if _drawn_card.effect == "KUK":
+                    effect_function()
+                else:
+                    effect_function(_round)
 
     def hit_discard_pile(self, _round: Round) -> None:
         """
@@ -292,7 +296,8 @@ class Player:
         position_for_new_card: Optional[int] = self.pick_position_for_new_card(
             _free_slots
         )
-        if position_for_new_card:
+
+        if isinstance(position_for_new_card, int):
             self.hand[position_for_new_card] = drawn_card
             self.hand = [c for c in self.hand if c]  # filter Nones
         else:
@@ -312,7 +317,9 @@ class Player:
         :return:
         """
         card_idx_to_be_seen: List[int] = self.pick_cards_to_see(num_cards_to_see=1)
-        self.hand[card_idx_to_be_seen[0]].known_to_owner = True
+        peaked_card: Card = self.hand[card_idx_to_be_seen[0]]
+        peaked_card.known_to_owner = True
+        self.tell_player_card_value(peaked_card, "PEAK")
 
     def spy(self) -> None:
         """
@@ -322,13 +329,15 @@ class Player:
         spying_specs: Tuple[Type[Player], Card] = self.specify_spying()
         spied_opponent, spied_card = spying_specs
         spied_card.known_to_other_players.append(self)
+        self.tell_player_card_value(spied_card, "SPY")
 
-    def swap(self) -> None:
+    def swap(self, _round: Round) -> None:
         """
         perform the effect 'Swap' and ask the player to specify details (opponent and involved cards)
+        :param _round: Round, current round
         :return:
         """
-        swapping_specs: Tuple[Type[Player], int, int] = self.specify_swap()
+        swapping_specs: Tuple[Type[Player], int, int] = self.specify_swap(_round)
         opponent, own_card_idx, opponents_card_idx = swapping_specs
 
         # switch cards
@@ -343,7 +352,5 @@ class Player:
 
         # update knowledge of the cards to
         # TODO: below: remove the owner from 'known to other players" (could be done as a setter of known_to_owner)
-        opponents_card.known_to_owner = opponent.check_knowledge_of_card(
-            card=opponents_card
-        )
+        opponents_card.known_to_owner = opponent.check_knowledge_of_card(opponents_card)
         own_card.known_to_owner = self.check_knowledge_of_card(card=own_card)

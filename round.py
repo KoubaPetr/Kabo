@@ -7,6 +7,7 @@ import collections
 
 if TYPE_CHECKING:
     from player import Player
+    from human_player import HumanPlayer
 
 from random import shuffle
 
@@ -129,7 +130,7 @@ class Round:
         for player in self.players:
             player.reset_player_after_round()
 
-    def get_player_by_name(self, name: str) -> Type[Player]:
+    def get_player_by_name(self, name: str):  # Missing typing
         """
         helper method to search for a player in the round, by his/her name
         :param name: str, name of the player to be searched for
