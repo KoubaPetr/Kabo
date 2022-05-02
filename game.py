@@ -64,6 +64,8 @@ class Game:
         _players_rotated: list = list(_players_deque)
 
         _round: Round = Round(cards=Game.CARDS.copy(), players=_players_rotated)
+        # TODO: why is the visibility of the card not fixed with copying from Game again?
+        # TODO: why did the rotation not take effect?
         return _round
 
     def _read_players_game_scores(self) -> Dict[Type[P], int]:
