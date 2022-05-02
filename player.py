@@ -2,10 +2,13 @@
 Class Player
 """
 from itertools import count
-from typing import List, Optional, Callable, Type, Tuple, Dict
+from typing import List, Optional, Callable, Type, Tuple, Dict, TYPE_CHECKING
 from card import Card
 from round import Round
 from rules import ALLOWED_PLAYS, KABO_MALUS, POINT_VALUE_AFTER_HITTING_TARGET
+
+if TYPE_CHECKING:
+    from human_player import P
 
 
 class Player:
@@ -117,7 +120,7 @@ class Player:
             if plr != self
         ]
 
-        if min(_other_player_scores) < _sum_hand:  # Kabo successful
+        if min(_other_player_scores) >= _sum_hand:  # Kabo successful
             return 0
 
         return _sum_hand + KABO_MALUS  # Kabo failed
@@ -321,12 +324,13 @@ class Player:
         peaked_card.known_to_owner = True
         self.tell_player_card_value(peaked_card, "PEAK")
 
-    def spy(self) -> None:
+    def spy(self, _round: Round) -> None:
         """
         perform the effect 'Spy' and ask the player what opponent and what card he/she wants to see
+        :param _round: Round, current round
         :return:
         """
-        spying_specs: Tuple[Type[Player], Card] = self.specify_spying()
+        spying_specs: Tuple[Type[P], Card] = self.specify_spying(_round)
         spied_opponent, spied_card = spying_specs
         spied_card.known_to_other_players.append(self)
         self.tell_player_card_value(spied_card, "SPY")
@@ -337,7 +341,7 @@ class Player:
         :param _round: Round, current round
         :return:
         """
-        swapping_specs: Tuple[Type[Player], int, int] = self.specify_swap(_round)
+        swapping_specs: Tuple[Type[P], int, int] = self.specify_swap(_round)
         opponent, own_card_idx, opponents_card_idx = swapping_specs
 
         # switch cards

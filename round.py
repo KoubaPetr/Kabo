@@ -4,13 +4,7 @@ Class Round
 from itertools import count, cycle
 from typing import TYPE_CHECKING, List, Dict, Optional, Type
 import collections
-
-if TYPE_CHECKING:
-    from player import Player
-    from human_player import HumanPlayer
-
 from random import shuffle
-
 from card import Card
 from rules import (
     CARDS_PER_PLAYER,
@@ -19,6 +13,10 @@ from rules import (
     KAMIKADZE_VALUES,
     KAMIKADZE_PENALTY,
 )
+
+if TYPE_CHECKING:
+    from player import Player
+    from human_player import HumanPlayer
 
 
 class Round:
@@ -36,7 +34,7 @@ class Round:
         Constructor method
         """
         # Init round attributes
-        self.id: int = next(self._id_incremental)
+        self.round_id: int = next(self._id_incremental)
         self.players: List[Type[Player]] = players
         self.kabo_called: bool = (
             False  # indicator whether kabo was called in this round already

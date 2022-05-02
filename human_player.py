@@ -4,9 +4,11 @@ which allowes interactive input by a user
 """
 from player import Player
 from round import Round
-from rules import ALLOWED_PLAYS, MAIN_DECK_CARD_DECISIONS, DISCARD_PILE_CARD_DECISIONS
-from typing import List, Optional, Type, Tuple
+from rules import ALLOWED_PLAYS, MAIN_DECK_CARD_DECISIONS
+from typing import List, Optional, Type, Tuple, TypeVar
 from card import Card
+
+P = TypeVar("P", bound=Player)
 
 
 class HumanPlayer(Player):
@@ -136,11 +138,11 @@ class HumanPlayer(Player):
         picked_positions: str
         if num_cards_to_see > 1:
             picked_positions = input(
-                f"{self.name}: Pick cards in your hand, which you want to see. Specify them by card index separated by space.\n"
+                f"{self.name}: Pick cards in your hand {[str(c) for c in self.hand]}, which you want to see. Specify them by card index separated by space.\n"
             )
         elif num_cards_to_see == 1:
             picked_positions = input(
-                f"{self.name}: Pick card in your hand, which you want to see. Specify it by card index.\n"
+                f"{self.name}: Pick card in your hand {[str(c) for c in self.hand]}, which you want to see. Specify it by card index.\n"
             )
         else:
             raise ValueError(f"Invalid number of cards to see {num_cards_to_see}.")
@@ -159,7 +161,7 @@ class HumanPlayer(Player):
             )
         return picked_indices
 
-    def specify_spying(self, _round: Round) -> Tuple[Type[Player], Card]:
+    def specify_spying(self, _round: Round) -> Tuple[Type[P], Card]:
         """
         Ask the human player which player he/she wants to spy on and which card he/she wants to spy
         :param _round: Round, current round
@@ -173,10 +175,10 @@ class HumanPlayer(Player):
         if input_name not in available_players:
             raise ValueError(f"Unknown opponent {input_name}")
 
-        opponent_to_be_spied: Type[Player] = _round.get_player_by_name(input_name)
+        opponent_to_be_spied: Type[P] = _round.get_player_by_name(input_name)
         input_position: str = input(
             f"{self.name}, please specify the card of {opponent_to_be_spied.name} you wish to spy, "
-            f"{opponent_to_be_spied}'s hand is: {[print(c) for c in opponent_to_be_spied.hand]}\n"
+            f"{opponent_to_be_spied}'s hand is: {[str(c) for c in opponent_to_be_spied.hand]}\n"
         )
         input_position = input_position.strip()
         try:
@@ -192,7 +194,7 @@ class HumanPlayer(Player):
         spied_card: Card = opponent_to_be_spied.hand[input_position_idx]
         return opponent_to_be_spied, spied_card
 
-    def specify_swap(self, _round: Round) -> Tuple[Type[Player], int, int]:
+    def specify_swap(self, _round: Round) -> Tuple[Type[P], int, int]:
         """
         Ask the human player which player he/she wants to swap with and which cards he/she wants to swap (specified by idx)
         :param _round: Round, current round
@@ -201,7 +203,7 @@ class HumanPlayer(Player):
         # Get own card for swap
         own_card_input: str = input(
             f"{self.name}, please specify the position of your card you wish to swap, "
-            f"Your hand is: {[print(c) for c in self.hand]}\n"
+            f"Your hand is: {[str(c) for c in self.hand]}\n"  # why is print printing None when str gives X ? and why are the cards not visible?
         )
         own_card_input = own_card_input.strip()
         try:
@@ -222,10 +224,10 @@ class HumanPlayer(Player):
         if input_name not in available_players:
             raise ValueError(f"Unknown opponent {input_name}")
 
-        opponent_for_swap: Type[Player] = _round.get_player_by_name(input_name)
+        opponent_for_swap: Type[P] = _round.get_player_by_name(input_name)
         input_position: str = input(
             f"{self.name}, please specify the card of {opponent_for_swap.name} you wish to swap, "
-            f"{opponent_for_swap.name}'s hand is: {[print(c) for c in opponent_for_swap.hand]}\n"
+            f"{opponent_for_swap.name}'s hand is: {[str(c) for c in opponent_for_swap.hand]}\n"
         )
 
         # Get opponents card for swap

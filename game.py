@@ -2,9 +2,9 @@
 Class Game
 """
 from collections import deque
-from typing import Dict, List, Type, Optional
+from typing import Dict, List, Type
 from card import Card
-from human_player import HumanPlayer
+from human_player import HumanPlayer, P
 from player import Player
 from round import Round
 from rules import ALLOWED_PLAYER_COUNTS, CARD_AMOUNTS, TARGET_POINT_VALUE
@@ -20,13 +20,13 @@ class Game:
     CARDS: List[Card] = [
         Card(value) for value, amount in CARD_AMOUNTS.items() for i in range(amount)
     ]
-    characters_to_child_classes: Dict[str, type] = {"HUMAN": HumanPlayer}
+    characters_to_child_classes: Dict[str, Type[P]] = {"HUMAN": HumanPlayer}
 
     def __init__(self, player_names_and_chars: Dict[str, str]):
         """
         Constructor method
         """
-        if type(player_names_and_chars) != dict:
+        if not isinstance(player_names_and_chars, dict):
             raise TypeError(
                 f"The player names and their characters should be passed as a dict. Not as {type(player_names_and_chars)}"
             )
@@ -42,7 +42,7 @@ class Game:
         _player_deque: deque = deque(self.player_name_list)
         _player_deque.rotate(1)  # rotate player names
         # TODO: consider reseting players id counter before creating them ?
-        self.players: List[Type[Player]] = Game.create_players_by_character(
+        self.players: List[Type[P]] = Game.create_players_by_character(
             player_names_and_chars
         )
         self.rounds: List[Round] = []  # to remember the rounds
@@ -56,17 +56,17 @@ class Game:
 
     def _play_round(self) -> Round:
         """
-        Function to play a new round
+        Function to play a new _round
         :return:
         """
         _players_deque: deque = deque(self.players)
         _players_deque.rotate(-1)
         _players_rotated: list = list(_players_deque)
 
-        round: Round = Round(cards=Game.CARDS.copy(), players=_players_rotated)
-        return round
+        _round: Round = Round(cards=Game.CARDS.copy(), players=_players_rotated)
+        return _round
 
-    def _read_players_game_scores(self) -> Dict[Type[Player], int]:
+    def _read_players_game_scores(self) -> Dict[Type[P], int]:
         """
 
         :return: Dict[Type[Player],int], with current match scores of all players
@@ -80,9 +80,9 @@ class Game:
         """
 
         while True:
-            round: Round = self._play_round()
-            self.rounds.append(round)
-            _scores: Dict[Type[Player], int] = self._read_players_game_scores()
+            _round: Round = self._play_round()
+            self.rounds.append(_round)
+            _scores: Dict[Type[P], int] = self._read_players_game_scores()
             _play_next_round: bool = True
 
             for player, score in _scores.items():
@@ -93,21 +93,21 @@ class Game:
                     _play_next_round = False
 
             # TODO: save the score after round into game history ?
-            self._report_standings_after_round(round=round)
+            self._report_standings_after_round(_round=_round)
             if not _play_next_round:
                 break
         self._report_standings_after_game()
 
-    def _report_standings_after_round(self, round: Round) -> None:
+    def _report_standings_after_round(self, _round: Round) -> None:
         """
         Utility to report standings in between rounds
         :return: None (for now, printing a statement only)
         """
         print("-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-")
-        print(f"Score after round {round.id}")
-        for p in self.players:
+        print(f"Score after round {_round.round_id}")
+        for player in self.players:
             print(
-                f"{p} has {p.players_game_score}. With {p.get_players_score_in_round(_round=round)} "
+                f"{player} has {player.players_game_score}. With {player.get_players_score_in_round(_round=_round)} "
                 f"points obtained in latest round."
             )
         print("-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-")
@@ -117,33 +117,35 @@ class Game:
         Utility to report standings in between rounds
         :return: None (for now, printing a statement only)
         """
-        _sorted_players: List[Type[Player]] = sorted(
+        _sorted_players: List[Type[P]] = sorted(
             self.players, key=lambda plr: plr.players_game_score, reverse=True
         )
 
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
-        print(f"Results of the game")
-        for p_position, p in enumerate(_sorted_players):
-            print(f"{p_position + 1}. {p} with {p.players_game_score} points")
+        print("Results of the game")
+        for player_position, player in enumerate(_sorted_players):
+            print(
+                f"{player_position + 1}. {player} with {player.players_game_score} points"
+            )
         print(f"Congratulations, {_sorted_players[0].name}!!!")
         print("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$")
 
     @staticmethod
     def create_players_by_character(
         player_names_and_chars: Dict[str, str]
-    ) -> List[Type[Player]]:
+    ) -> List[Type[P]]:
         """
 
         :param player_names_and_chars: dict with names of players and their characters
         :return: list of intantiated players (of the respective character)
         """
-        retVal: List[Type[Player]] = []
+        ret_val: List[Type[P]] = []
 
         for name, character in player_names_and_chars.items():
             if character not in Game.characters_to_child_classes.keys():  # None
                 raise ValueError(f"The character = {character} is unknown")
-            else:
-                player: Type[Player] = Game.characters_to_child_classes[character]
-                player_instance = player(name)  # instantiate
-                retVal.append(player_instance)
-        return retVal
+
+            player: Type[P] = Game.characters_to_child_classes[character]
+            player_instance = player(name)  # instantiate
+            ret_val.append(player_instance)
+        return ret_val
