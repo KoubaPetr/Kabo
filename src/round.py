@@ -5,8 +5,8 @@ from itertools import count, cycle
 from typing import TYPE_CHECKING, List, Dict, Optional, Type
 import collections
 from random import shuffle
-from card import Card
-from rules import (
+from src.card import Card
+from src.rules import (
     CARDS_PER_PLAYER,
     NUMBER_OF_CARDS_TO_SEE,
     NUMBER_OF_CARDS_FOR_KAMIKADZE,
@@ -15,8 +15,7 @@ from rules import (
 )
 
 if TYPE_CHECKING:
-    from player import Player
-    from human_player import HumanPlayer
+    from src.player import Player
 
 
 class Round:

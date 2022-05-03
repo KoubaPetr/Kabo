@@ -2,11 +2,11 @@
 Class HumanPlayer is a subclass of Player class, which specifies Players playing behaviour in such a way,
 which allowes interactive input by a user
 """
-from player import Player
-from round import Round
-from rules import ALLOWED_PLAYS, MAIN_DECK_CARD_DECISIONS
+from src.player import Player
+from src.round import Round
+from src.rules import ALLOWED_PLAYS, MAIN_DECK_CARD_DECISIONS
 from typing import List, Optional, Type, Tuple, TypeVar
-from card import Card
+from src.card import Card
 
 P = TypeVar("P", bound=Player)
 

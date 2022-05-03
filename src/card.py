@@ -6,9 +6,9 @@ from itertools import count
 from typing import TYPE_CHECKING, List, Optional
 
 if TYPE_CHECKING:
-    from player import Player
+    from src.player import Player
 
-from rules import CARD_EFFECTS, CARD_LEGAL_VALUES, NUM_KINDS_FOR_MULTIPLE_DISCARD
+from src.rules import CARD_EFFECTS, CARD_LEGAL_VALUES, NUM_KINDS_FOR_MULTIPLE_DISCARD
 
 
 class Card:

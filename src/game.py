@@ -3,11 +3,10 @@ Class Game
 """
 from collections import deque
 from typing import Dict, List, Type
-from card import Card
-from human_player import HumanPlayer, P
-from player import Player
-from round import Round
-from rules import ALLOWED_PLAYER_COUNTS, CARD_AMOUNTS, TARGET_POINT_VALUE
+from src.card import Card
+from src.human_player import HumanPlayer, P
+from src.round import Round
+from src.rules import ALLOWED_PLAYER_COUNTS, CARD_AMOUNTS, TARGET_POINT_VALUE
 
 
 class Game:
