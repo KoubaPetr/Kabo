@@ -1,7 +1,8 @@
 # Kabo
 [![Code style:black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/ambv/black)
 
-#How to run
+# How to run
+
 Assuming you have conda installed:
 
 1) Download the Project, so that locally you have folder Kabo containing the whole project
