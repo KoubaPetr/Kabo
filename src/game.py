@@ -7,6 +7,7 @@ from src.card import Card
 from src.human_player import HumanPlayer, P
 from src.round import Round
 from src.rules import ALLOWED_PLAYER_COUNTS, CARD_AMOUNTS, TARGET_POINT_VALUE
+from gui import GUI
 
 
 class Game:
@@ -18,7 +19,7 @@ class Game:
 
     characters_to_child_classes: Dict[str, Type[P]] = {"HUMAN": HumanPlayer}
 
-    def __init__(self, player_names_and_chars: Dict[str, str]):
+    def __init__(self, player_names_and_chars: Dict[str, str], using_gui: bool = False):
         """
         Constructor method
         """
@@ -43,6 +44,12 @@ class Game:
         )
         self.rounds: List[Round] = []  # to remember the rounds
 
+        self.using_gui: bool = using_gui
+        if self.using_gui:
+            self.GUI = GUI
+        else:
+            self.GUI = None
+
     def __repr__(self):
         """
         Overloading representation of the Game class
@@ -58,13 +65,8 @@ class Game:
         CARDS: List[Card] = [
             Card(value) for value, amount in CARD_AMOUNTS.items() for i in range(amount)
         ]
-        # _players_deque: deque = deque(self.players)
-        # _players_deque.rotate(-1)
-        # _players_rotated: list = list(_players_deque)
 
         _round: Round = Round(cards=CARDS, players=self.players)
-        # TODO: why is the visibility of the card not fixed with copying from Game again?
-        # TODO: why did the rotation not take effect?
         return _round
 
     def _read_players_game_scores(self) -> Dict[Type[P], int]:
@@ -81,7 +83,11 @@ class Game:
         """
 
         while True:
-            _round: Round = self._play_round()
+            if self.GUI:
+                self.GUI.update_screen()  # TODO: maybe not necessary to update here
+            _round: Round = (
+                self._play_round()
+            )  # TODO: go inside the round loop and update the gui there
             self.rounds.append(_round)
             _scores: Dict[Type[P], int] = self._read_players_game_scores()
             _play_next_round: bool = True
