@@ -9,4 +9,4 @@ Assuming you have conda installed:
 2) Navigate to the Kabo folder
 3) conda env create -f kabo.yml #This should build the conda env
 4) conda activate Kabo #Activate the conda env
-5) pyhton main.py #This should run the game, the parameters can be customized inside main.py
+5) python main.py #This should run the game, the parameters can be customized inside main.py
