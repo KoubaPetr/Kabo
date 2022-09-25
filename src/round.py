@@ -34,7 +34,9 @@ class Round:
         """
         # Init round attributes
         self.round_id: int = next(self._id_incremental)
-        self.players: List[Type[Player]] = players
+        self.players: List[Type[Player]] = (
+            players[self.round_id :] + players[: self.round_id]
+        )
         self.kabo_called: bool = (
             False  # indicator whether kabo was called in this round already
         )

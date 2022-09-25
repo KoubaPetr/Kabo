@@ -93,7 +93,7 @@ class HumanPlayer(Player):
             )
         else:
             input_decision = input(
-                f"{self.name}: You have drawn the Card {card.value} {card.effect} do you want to KEEP it, DISCARD it or play the effect?\n"
+                f"{self.name}: You have drawn the Card {card.value} {card.effect} do you want to KEEP it, DISCARD it or play the EFFECT?\n"
             )
         input_decision = input_decision.strip()
         input_decision = input_decision.upper()

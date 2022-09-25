@@ -1,7 +1,7 @@
 """
 Class Game
 """
-from collections import deque
+# from collections import deque
 from typing import Dict, List, Type
 from src.card import Card
 from src.human_player import HumanPlayer, P
@@ -16,9 +16,6 @@ class Game:
     :param player_names_and_chars: List[str], list of player names who will play this game (length should be 2-4)
     """
 
-    CARDS: List[Card] = [
-        Card(value) for value, amount in CARD_AMOUNTS.items() for i in range(amount)
-    ]
     characters_to_child_classes: Dict[str, Type[P]] = {"HUMAN": HumanPlayer}
 
     def __init__(self, player_names_and_chars: Dict[str, str]):
@@ -37,9 +34,9 @@ class Game:
             )
 
         self.player_name_list: List[str] = list(player_names_and_chars.keys())
-        # TODO: test for name duplicities -then player __repr__ can be done using name only
-        _player_deque: deque = deque(self.player_name_list)
-        _player_deque.rotate(1)  # rotate player names
+        # TODO: test for name duplicities - then player __repr__ can be done using name only
+        # _player_deque: deque = deque(self.player_name_list)
+        # _player_deque.rotate(1)  # rotate player names
         # TODO: consider reseting players id counter before creating them ?
         self.players: List[Type[P]] = Game.create_players_by_character(
             player_names_and_chars
@@ -58,11 +55,14 @@ class Game:
         Function to play a new _round
         :return:
         """
-        _players_deque: deque = deque(self.players)
-        _players_deque.rotate(-1)
-        _players_rotated: list = list(_players_deque)
+        CARDS: List[Card] = [
+            Card(value) for value, amount in CARD_AMOUNTS.items() for i in range(amount)
+        ]
+        # _players_deque: deque = deque(self.players)
+        # _players_deque.rotate(-1)
+        # _players_rotated: list = list(_players_deque)
 
-        _round: Round = Round(cards=Game.CARDS.copy(), players=_players_rotated)
+        _round: Round = Round(cards=CARDS, players=self.players)
         # TODO: why is the visibility of the card not fixed with copying from Game again?
         # TODO: why did the rotation not take effect?
         return _round
@@ -88,7 +88,7 @@ class Game:
 
             for player, score in _scores.items():
                 if score == TARGET_POINT_VALUE:
-                    _play_next_round = player.reached_score_100()
+                    _play_next_round = _play_next_round and player.reached_score_100()
 
                 elif score > TARGET_POINT_VALUE:
                     _play_next_round = False
