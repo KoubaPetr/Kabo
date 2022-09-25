@@ -2,6 +2,7 @@
 File holding all the constants relevant for the game (coming from the rules)
 """
 from typing import Dict, List, Tuple
+import os
 
 TARGET_POINT_VALUE: int = 100
 POINT_VALUE_AFTER_HITTING_TARGET: int = 50
@@ -49,3 +50,7 @@ KAMIKADZE_PENALTY: int = 50
 NUM_KINDS_FOR_MULTIPLE_DISCARD: int = 1
 MAIN_DECK_CARD_DECISIONS: List[str] = ["KEEP", "DISCARD", "EFFECT"]
 DISCARD_PILE_CARD_DECISIONS: List[str] = ["KEEP", "DISCARD"]
+
+# paths to images
+CARD_IMAGE_PATH_ORIGINAL = os.path.join("images", "original", "card_{}.svg")
+CARD_IMAGE_PATH_SCRIBBLE = os.path.join("images", "scribble", "card_{}.svg")

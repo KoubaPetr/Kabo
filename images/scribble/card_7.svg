@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"
+[
+<!ATTLIST g
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:layerName CDATA #IMPLIED >
+<!ATTLIST g
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:mask CDATA #IMPLIED >
+<!ATTLIST text
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:width CDATA #IMPLIED >
+
+<!ATTLIST path
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:blendMode CDATA #IMPLIED >
+<!ATTLIST path
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowColor CDATA #IMPLIED >
+<!ATTLIST path
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowOpacity CDATA #IMPLIED >
+<!ATTLIST path
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowRadius CDATA #IMPLIED >
+<!ATTLIST path
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowOffset CDATA #IMPLIED >
+<!ATTLIST path
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowAngle CDATA #IMPLIED >
+
+<!ATTLIST image
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:blendMode CDATA #IMPLIED >
+<!ATTLIST image
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowColor CDATA #IMPLIED >
+<!ATTLIST image
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowOpacity CDATA #IMPLIED >
+<!ATTLIST image
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowRadius CDATA #IMPLIED >
+<!ATTLIST image
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowOffset CDATA #IMPLIED >
+<!ATTLIST image
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowAngle CDATA #IMPLIED >
+
+<!ATTLIST g
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:blendMode CDATA #IMPLIED >
+<!ATTLIST g
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowColor CDATA #IMPLIED >
+<!ATTLIST g
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowOpacity CDATA #IMPLIED >
+<!ATTLIST g
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowRadius CDATA #IMPLIED >
+<!ATTLIST g
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowOffset CDATA #IMPLIED >
+<!ATTLIST g
+  xmlns:vectornator CDATA #FIXED "http://vectornator.io"
+  vectornator:shadowAngle CDATA #IMPLIED >
+
+<!ENTITY % SVG.filter.extra.content  "| feDropShadow" >
+<!ELEMENT feDropShadow EMPTY>
+<!ATTLIST feDropShadow
+  xmlns:svg CDATA #FIXED "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"
+  dx CDATA #IMPLIED>
+<!ATTLIST feDropShadow
+  xmlns:svg CDATA #FIXED "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"
+  dy CDATA #IMPLIED>
+<!ATTLIST feDropShadow
+  xmlns:svg CDATA #FIXED "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"
+  stdDeviation CDATA #IMPLIED>
+<!ATTLIST feDropShadow
+  xmlns:svg CDATA #FIXED "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"
+  flood-opacity CDATA #IMPLIED>
+<!ATTLIST feDropShadow
+  xmlns:svg CDATA #FIXED "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"
+  in CDATA #IMPLIED>
+<!ATTLIST feDropShadow
+  xmlns:svg CDATA #FIXED "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"
+  result CDATA #IMPLIED>
+<!ATTLIST feDropShadow
+  xmlns:svg CDATA #FIXED "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"
+  flood-color CDATA #IMPLIED>
+]
+>
+<!-- Created with Vectornator (http://vectornator.io/) -->
+<svg height="100%" stroke-miterlimit="10" style="fill-rule:nonzero;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;" version="1.1" viewBox="0 0 419.58 297.675" width="100%" xml:space="preserve" xmlns="http://www.w3.org/2000/svg" xmlns:vectornator="http://vectornator.io" xmlns:xlink="http://www.w3.org/1999/xlink">
+<defs>
+<clipPath id="TextBounds">
+<rect height="71.2465" width="41.8434" x="159.963" y="146.142"/>
+</clipPath>
+<clipPath id="TextBounds_2">
+<rect height="1" width="94.6992" x="153.159" y="155.738"/>
+</clipPath>
+<clipPath id="TextBounds_3">
+<rect height="36.5632" width="46.0796" x="152.395" y="210.925"/>
+</clipPath>
+</defs>
+<g id="Layer-1" vectornator:layerName="Layer 1">
+<path d="M131.384 110.305L215.138 110.305C218.486 110.305 221.199 113.018 221.199 116.365L221.199 262.583C221.199 265.931 218.486 268.644 215.138 268.644L131.384 268.644C128.037 268.644 125.324 265.931 125.324 262.583L125.324 116.365C125.324 113.018 128.037 110.305 131.384 110.305Z" fill="#75b1d7" fill-rule="evenodd" opacity="1" stroke="none"/>
+<path clip-path="url(#TextBounds)" d="M187.611 150.767L187.611 154.6C186.488 155.69 184.995 157.586 183.131 160.288C181.267 162.99 179.619 165.903 178.187 169.028C176.771 172.072 175.697 174.847 174.964 177.354C174.492 178.965 173.882 181.561 173.133 185.142L168.275 185.142C169.382 178.469 171.823 171.828 175.599 165.22C177.829 161.346 180.173 158.001 182.63 155.186L163.294 155.186L163.294 150.767L187.611 150.767Z" fill="#1f2326" fill-rule="evenodd" opacity="1" stroke="none"/>
+<g fill="#1f2326" opacity="1" stroke="none"/>
+<g fill="#1f2326" opacity="1" stroke="none">
+<path clip-path="url(#TextBounds_3)" d="M155.418 215.58L157.312 215.58L157.312 222.572L164.305 215.58L166.99 215.58L161.023 221.361L167.156 229.925L164.627 229.925L159.607 222.728L157.312 224.925L157.312 229.925L155.418 229.925L155.418 215.58Z" fill-rule="evenodd"/>
+<path clip-path="url(#TextBounds_3)" d="M170.867 215.58L170.867 224.447C170.867 225.489 171.062 226.354 171.453 227.045C172.033 228.086 173.009 228.607 174.383 228.607C176.03 228.607 177.15 228.044 177.742 226.918C178.061 226.306 178.221 225.482 178.221 224.447L178.221 215.58L180.193 215.58L180.193 223.636C180.193 225.401 179.956 226.758 179.48 227.709C178.608 229.44 176.961 230.306 174.539 230.306C172.117 230.306 170.473 229.44 169.607 227.709C169.132 226.758 168.895 225.401 168.895 223.636L168.895 215.58L170.867 215.58Z" fill-rule="evenodd"/>
+<path clip-path="url(#TextBounds_3)" d="M183.201 215.58L185.096 215.58L185.096 222.572L192.088 215.58L194.773 215.58L188.807 221.361L194.939 229.925L192.41 229.925L187.391 222.728L185.096 224.925L185.096 229.925L183.201 229.925L183.201 215.58Z" fill-rule="evenodd"/>
+</g>
+</g>
+</svg>
