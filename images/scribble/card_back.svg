@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:vectornator="http://vectornator.io" xmlns:xlink="http://www.w3.org/1999/xlink" stroke-miterlimit="10" style="fill-rule:nonzero;clip-rule:evenodd;stroke-linecap:round;stroke-linejoin:round;" version="1.1" xml:space="preserve" viewBox="125.32 110.31 122.53 158.34">
+<defs>
+<clipPath id="TextBounds">
+<rect height="71.2465" width="66.7092" x="143.585" y="146.142"/>
+</clipPath>
+<clipPath id="TextBounds_2">
+<rect height="1" width="94.6992" x="153.159" y="155.738"/>
+</clipPath>
+</defs>
+<g id="Layer-1" vectornator:layerName="Layer 1">
+<path d="M131.384 110.305L215.138 110.305C218.486 110.305 221.199 113.018 221.199 116.365L221.199 262.583C221.199 265.931 218.486 268.644 215.138 268.644L131.384 268.644C128.037 268.644 125.324 265.931 125.324 262.583L125.324 116.365C125.324 113.018 128.037 110.305 131.384 110.305Z" fill="#75b1d7" fill-rule="evenodd" opacity="1" stroke="none"/>
+<g fill="#1f2326" opacity="1" stroke="none"/>
+<g fill="#1f2326" opacity="1" stroke="none"/>
+</g>
+</svg>
