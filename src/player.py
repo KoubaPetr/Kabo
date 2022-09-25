@@ -229,7 +229,7 @@ class Player:
         :param _round: Round, current round
         :return:
         """
-        _drawn_card: Card = _round.main_deck.pop()
+        _drawn_card: Card = _round.main_deck.cards.pop()
         decision_on_card = self.decide_on_card_use(_drawn_card)
         match decision_on_card:
             case "KEEP":

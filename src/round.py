@@ -4,8 +4,8 @@ Class Round
 from itertools import count, cycle
 from typing import TYPE_CHECKING, List, Dict, Optional, Type
 import collections
-from random import shuffle
 from src.card import Card
+from deck import Deck
 from src.rules import (
     CARDS_PER_PLAYER,
     NUMBER_OF_CARDS_TO_SEE,
@@ -41,17 +41,17 @@ class Round:
             False  # indicator whether kabo was called in this round already
         )
         self.discard_pile: List[Card] = []
-        self.main_deck: List[Card] = cards
+        self.main_deck: Deck = Deck(cards)
 
         # Reset players attributes which might have been altered in previous rounds
         self._reset_players()
 
         # Shuffle and deal the cards
-        shuffle(self.main_deck)  # shuffles the cards in place
+        self.main_deck.shuffle()  # shuffles the cards in place
         self._deal_cards_to_players()
 
         # Init the discard pile
-        _first_discarded_card: Card = self.main_deck.pop()
+        _first_discarded_card: Card = self.main_deck.cards.pop()
         self.discard_card(_first_discarded_card)
 
         # Start actions of players
@@ -68,7 +68,7 @@ class Round:
         """
         for player in self.players:
             for _ in range(CARDS_PER_PLAYER):
-                _dealt_card: Card = self.main_deck.pop()
+                _dealt_card: Card = self.main_deck.cards.pop()
                 self._deal_single_card(_dealt_card, player)
 
     def discard_card(self, card: Card) -> None:
@@ -106,7 +106,7 @@ class Round:
         _kabo_counter: int = len(self.players)
         _kabo_active: bool = False
 
-        while self.main_deck:
+        while self.main_deck.cards:
             if _kabo_counter == 0:
                 break
 
