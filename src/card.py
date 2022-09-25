@@ -15,6 +15,8 @@ from src.rules import (
     CARD_EFFECTS,
     CARD_LEGAL_VALUES,
     NUM_KINDS_FOR_MULTIPLE_DISCARD,
+)
+from src.graphics_config import (
     CARD_IMAGE_PATH_ORIGINAL,
     CARD_IMAGE_PATH_SCRIBBLE,
 )
