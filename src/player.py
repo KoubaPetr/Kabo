@@ -254,7 +254,7 @@ class Player:
         :param _round: Round, current round
         :return:
         """
-        _top_discarded_card: Card = _round.discard_pile.pop()
+        _top_discarded_card: Card = _round.discard_pile.hit()
         # here we assume visible card is automatically kept
         self.keep_drawn_card(_top_discarded_card, _round)
 

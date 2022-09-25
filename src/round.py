@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, List, Dict, Optional, Type
 import collections
 from src.card import Card
 from deck import Deck
+from discard_pile import DiscardPile
 from src.rules import (
     CARDS_PER_PLAYER,
     NUMBER_OF_CARDS_TO_SEE,
@@ -40,7 +41,7 @@ class Round:
         self.kabo_called: bool = (
             False  # indicator whether kabo was called in this round already
         )
-        self.discard_pile: List[Card] = []
+        self.discard_pile: DiscardPile = DiscardPile([])
         self.main_deck: Deck = Deck(cards)
 
         # Reset players attributes which might have been altered in previous rounds
@@ -82,7 +83,7 @@ class Round:
             True  # maybe cover the previously top card and make it again not visible?
         )
 
-        self.discard_pile.append(card)
+        self.discard_pile.add(card)
 
     def _let_players_see_cards(self) -> None:
         """
