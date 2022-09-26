@@ -1,13 +1,35 @@
 import os
 
-# paths to images
+### PATHS TO IMGS
 CARD_IMAGE_PATH_ORIGINAL = os.path.join("..", "images", "original", "card_{}.svg")
 CARD_IMAGE_PATH_SCRIBBLE = os.path.join("..", "images", "scribble", "card_{}.svg")
 CARD_BACK_IMAGE_PATH_SCRIBBLE = os.path.join(
     "..", "images", "scribble", "card_back.svg"
 )
 
-BOUNDS = 1024, 768
+### BOARD AND CARD DIMS AND PARAMS
+BOUNDS = 1024, 1024  # 1024, 768
 BACKGROUND_COLOR = (15, 169, 0)
 CAPTION = "Kabo"
-CARD_WIDTH, CARD_HEIGHT = 238, 332
+CARD_WIDTH, CARD_HEIGHT = 150, 210  # 238, 332
+
+### DECKS PARAMS
+PILES_GAP = 50
+MAIN_DECK_POSITION = int(BOUNDS[0] / 2 - CARD_WIDTH / 2), int(
+    BOUNDS[1] / 2 - CARD_HEIGHT / 2
+)
+DISCARD_PILE_POSITION = (
+    MAIN_DECK_POSITION[0] + CARD_WIDTH + PILES_GAP,
+    MAIN_DECK_POSITION[1],
+)
+
+### HAND PARAMS
+HAND_CARD_GAP = 20
+
+PLAYER_HANDS_ORIGIN = {0: (100, 100), 1: (900, 100), 2: (900, 900), 3: (100, 900)}
+PLAYER_HANDS_ORIGIN_2_PLAYERS = {0: (100, 100), 1: (900, 900)}
+PLAYER_HANDS_DIRECTION = {0: (1, 0), 1: (0, 1), 2: (-1, 0), 3: (0, -1)}
+PLAYER_HANDS_DIRECTION_2_PLAYERS = {0: (1, 0), 1: (-1, 0)}
+
+ROTATION_DEGREES = (0, 90, 180, 270)
+ROTATION_DEGREES_2_PLAYERS = (0, 180)

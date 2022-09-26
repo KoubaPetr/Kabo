@@ -42,11 +42,12 @@ class Game:
         self.players: List[Type[P]] = Game.create_players_by_character(
             player_names_and_chars
         )
+        self.num_players: int = len(self.players)
         self.rounds: List[Round] = []  # to remember the rounds
 
         self.using_gui: bool = using_gui
         if self.using_gui:
-            self.GUI = GUI
+            self.GUI = GUI(game=self)  # for multiplayer we will have multiple GUIs
         else:
             self.GUI = None
 
