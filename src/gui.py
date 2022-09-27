@@ -1,5 +1,6 @@
 import pygame
-from src.game import Game
+
+# from src.game import Game
 from src.rules import CARD_AMOUNTS
 from src.graphics_config import *
 from typing import Dict, Tuple
@@ -26,7 +27,7 @@ pygame.init()
 
 
 class GUI:
-    def __init__(self, game: Game):
+    def __init__(self, game):  # TODO: Game not typed due to circular import
         self.bounds = BOUNDS
         self.window = pygame.display.set_mode(self.bounds)
         self.card_width = CARD_WIDTH
@@ -38,7 +39,11 @@ class GUI:
             CARD_BACK_IMAGE_PATH_SCRIBBLE, CARD_WIDTH, CARD_HEIGHT
         )
         self.cardFronts = {
-            value: self.load_card(CARD_IMAGE_PATH_SCRIBBLE.format(value))
+            value: self.load_card(
+                CARD_IMAGE_PATH_SCRIBBLE.format(value),
+                self.card_width,
+                self.card_height,
+            )
             for value in CARD_AMOUNTS.keys()
         }
         self.game = game
@@ -141,6 +146,7 @@ class GUI:
 
         for p_position, p in enumerate(self.game.players):  # render players hands
             # TODO: handle the case with too many cards on hand
+            # TODO: Probably show players names and scores
             for c_position, c in enumerate(p.hand):  # render cards in those hands
                 (
                     new_card_width_position,
@@ -167,3 +173,5 @@ class GUI:
         """
         self.render_game()
         pygame.display.update()
+
+    # TODO: functions to animate moves (such as swap, peak, card exchange etc.)

@@ -5,8 +5,10 @@ from itertools import count, cycle
 from typing import TYPE_CHECKING, List, Dict, Optional, Type
 import collections
 from src.card import Card
-from deck import Deck
-from discard_pile import DiscardPile
+from src.deck import Deck
+
+# from src.game import Game
+from src.discard_pile import DiscardPile
 from src.rules import (
     CARDS_PER_PLAYER,
     NUMBER_OF_CARDS_TO_SEE,
@@ -29,7 +31,9 @@ class Round:
 
     _id_incremental: count = count(0)
 
-    def __init__(self, cards: List[Card], players: List["Player"]):
+    def __init__(
+        self, cards: List[Card], players: List["Player"], game
+    ):  # TODO: game not typed due to circular import
         """
         Constructor method
         """
@@ -38,6 +42,7 @@ class Round:
         self.players: List[Type[Player]] = (
             players[self.round_id :] + players[: self.round_id]
         )
+        self.game = game
         self.kabo_called: bool = (
             False  # indicator whether kabo was called in this round already
         )
@@ -54,13 +59,16 @@ class Round:
         # Init the discard pile
         _first_discarded_card: Card = self.main_deck.cards.pop()
         self.discard_card(_first_discarded_card)
-
+        if self.game.using_gui:
+            self.game.GUI.update_screen()
         # Start actions of players
         self._let_players_see_cards()
+        # TODO: show in the GUI when there is a multiplayer
         self._start_playing()
 
         # Update players score after round
         self._update_players_game_scores()
+        # TODO: show scores?
 
     def _deal_cards_to_players(self) -> None:
         """
@@ -113,6 +121,8 @@ class Round:
 
             current_player: "Player" = next(_players_cycle)
             kabo_called = current_player.perform_turn(_round=self)
+            if self.game.using_gui:
+                self.game.GUI.update_screen()
 
             if kabo_called:
                 self.kabo_called = True

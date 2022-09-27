@@ -1,11 +1,9 @@
 import os
 
 ### PATHS TO IMGS
-CARD_IMAGE_PATH_ORIGINAL = os.path.join("..", "images", "original", "card_{}.svg")
-CARD_IMAGE_PATH_SCRIBBLE = os.path.join("..", "images", "scribble", "card_{}.svg")
-CARD_BACK_IMAGE_PATH_SCRIBBLE = os.path.join(
-    "..", "images", "scribble", "card_back.svg"
-)
+CARD_IMAGE_PATH_ORIGINAL = os.path.join("images", "original", "card_{}.svg")
+CARD_IMAGE_PATH_SCRIBBLE = os.path.join("images", "scribble", "card_{}.svg")
+CARD_BACK_IMAGE_PATH_SCRIBBLE = os.path.join("images", "scribble", "card_back.svg")
 
 ### BOARD AND CARD DIMS AND PARAMS
 BOUNDS = 1024, 1024  # 1024, 768

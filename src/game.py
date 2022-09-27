@@ -7,7 +7,7 @@ from src.card import Card
 from src.human_player import HumanPlayer, P
 from src.round import Round
 from src.rules import ALLOWED_PLAYER_COUNTS, CARD_AMOUNTS, TARGET_POINT_VALUE
-from gui import GUI
+from src.gui import GUI
 
 
 class Game:
@@ -67,7 +67,7 @@ class Game:
             Card(value) for value, amount in CARD_AMOUNTS.items() for i in range(amount)
         ]
 
-        _round: Round = Round(cards=CARDS, players=self.players)
+        _round: Round = Round(cards=CARDS, players=self.players, game=self)
         return _round
 
     def _read_players_game_scores(self) -> Dict[Type[P], int]:
