@@ -40,6 +40,7 @@ dependencies:
     - platformdirs==2.5.2
     - pycodestyle==2.8.0
     - pyflakes==2.4.0
+    - pygame==2.1.2
     - pylint==2.13.7
     - wrapt==1.14.0
 prefix: /Users/petrkouba/opt/anaconda3/envs/Kabo
