@@ -141,7 +141,16 @@ class GUI:
         self.window.blit(
             self.cardBack, self.main_deck_position
         )  # back of the Main deck
-
+        ### below is a reference circle, to check coordinates on the screen
+        # pygame.draw.circle(
+        #     surface=self.window,
+        #     color="black",
+        #     center=(
+        #         BOUNDS[0] / 2 - (4 * CARD_WIDTH + 3 * HAND_CARD_GAP) / 2,
+        #         HAND_EDGE_GAP,
+        #     ),
+        #     radius=5,
+        # )
         hand_directions, hand_origins, rotation_degrees = self.get_hands_positions()
 
         for p_position, p in enumerate(self.game.players):  # render players hands

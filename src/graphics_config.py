@@ -6,7 +6,7 @@ CARD_IMAGE_PATH_SCRIBBLE = os.path.join("images", "scribble", "card_{}.svg")
 CARD_BACK_IMAGE_PATH_SCRIBBLE = os.path.join("images", "scribble", "card_back.svg")
 
 ### BOARD AND CARD DIMS AND PARAMS
-BOUNDS = 1000, 1000  # 1024, 768
+BOUNDS = 800, 800  # 1024, 768
 BACKGROUND_COLOR = (15, 169, 0)
 CAPTION = "Kabo"
 CARD_WIDTH, CARD_HEIGHT = 100, 140  # 238, 332
@@ -23,9 +23,24 @@ DISCARD_PILE_POSITION = (
 
 ### HAND PARAMS
 HAND_CARD_GAP = 20
+HAND_EDGE_GAP = 60  # the gap between cards on hand and closest edge of the board
 
-PLAYER_HANDS_ORIGIN = {0: (270, 60), 1: (740, 270), 2: (620, 740), 3: (270, 740)}
-PLAYER_HANDS_ORIGIN_2_PLAYERS = {0: (270, 60), 1: (530, 740)}
+PLAYER_HANDS_ORIGIN = {
+    0: (BOUNDS[0] / 2 - (4 * CARD_WIDTH + 3 * HAND_CARD_GAP) / 2, HAND_EDGE_GAP),
+    1: (
+        BOUNDS[0] - HAND_EDGE_GAP - CARD_HEIGHT,
+        BOUNDS[1] / 2 - (4 * CARD_WIDTH + 3 * HAND_CARD_GAP) / 2,
+    ),
+    2: (
+        BOUNDS[0] / 2 + (4 * CARD_WIDTH + 3 * HAND_CARD_GAP) / 2 - CARD_WIDTH,
+        BOUNDS[1] - HAND_EDGE_GAP - CARD_HEIGHT,
+    ),
+    3: (
+        HAND_EDGE_GAP,
+        BOUNDS[1] / 2 + (4 * CARD_WIDTH + 3 * HAND_CARD_GAP) / 2 - CARD_WIDTH,
+    ),
+}
+PLAYER_HANDS_ORIGIN_2_PLAYERS = {0: PLAYER_HANDS_ORIGIN[0], 1: PLAYER_HANDS_ORIGIN[2]}
 PLAYER_HANDS_DIRECTION = {0: (1, 0), 1: (0, 1), 2: (-1, 0), 3: (0, -1)}
 PLAYER_HANDS_DIRECTION_2_PLAYERS = {0: (1, 0), 1: (-1, 0)}
 
