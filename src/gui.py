@@ -164,6 +164,8 @@ class GUI:
         for p_position, p in enumerate(self.game.players):  # render players hands
             # TODO: handle the case with too many cards on hand
             # TODO: Probably show players names and scores
+            # TODO: fix the card orientation - to make it constant given a reference player
+            # TODO: GUIs for each player - use rotation to have the player owning the gui in the "pole" position
             for c_position, c in enumerate(p.hand):  # render cards in those hands
                 (
                     new_card_width_position,
