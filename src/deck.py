@@ -13,3 +13,10 @@ class Deck:
         :return:
         """
         shuffle(self.cards)
+
+    def __bool__(self):
+        """
+        Method for DiscardPile to have the same bool behaviour as list
+        :return: bool
+        """
+        return bool(self.cards)

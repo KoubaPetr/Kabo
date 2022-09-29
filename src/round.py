@@ -65,8 +65,7 @@ class Round:
         if self.game.using_gui:
             self.game.GUI.update_screen()
         # Start actions of players
-        self._let_players_see_cards()
-        # TODO: show in the GUI when there is a multiplayer
+        self._let_players_see_cards()  # TODO: show in the GUI when there is a multiplayer
         self._start_playing()
 
         # Update players score after round

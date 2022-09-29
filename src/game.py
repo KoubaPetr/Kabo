@@ -36,8 +36,6 @@ class Game:
 
         self.player_name_list: List[str] = list(player_names_and_chars.keys())
         # TODO: test for name duplicities - then player __repr__ can be done using name only
-        # _player_deque: deque = deque(self.player_name_list)
-        # _player_deque.rotate(1)  # rotate player names
         # TODO: consider reseting players id counter before creating them ?
         self.players: List[Type[P]] = Game.create_players_by_character(
             player_names_and_chars
