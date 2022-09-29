@@ -21,6 +21,13 @@ class DiscardPile:
         """
         return self.cards.pop()
 
+    def __bool__(self):
+        """
+        Method for DiscardPile to have the same bool behaviour as list
+        :return: bool
+        """
+        return bool(self.cards)
+
     def __getitem__(self, item):
         """
         Method to simplify an interaction with this object

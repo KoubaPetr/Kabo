@@ -4,24 +4,8 @@ import pygame
 from src.rules import CARD_AMOUNTS
 from src.graphics_config import *
 from typing import Dict, Tuple
-
-# from src.graphics_config import (
-#     CARD_BACK_IMAGE_PATH_SCRIBBLE,
-#     CARD_IMAGE_PATH_SCRIBBLE,
-#     BOUNDS,
-#     BACKGROUND_COLOR,
-#     CAPTION,
-#     CARD_WIDTH,
-#     CARD_HEIGHT,
-#     HAND_CARD_GAP,
-#     PLAYER_HANDS_ORIGIN,
-#     PLAYER_HANDS_ORIGIN_2_PLAYERS,
-#     PLAYER_HANDS_DIRECTION,
-#     PLAYER_HANDS_DIRECTION_2_PLAYERS,
-#     ROTATION_DEGREES,
-#     ROTATION_DEGREES_2_PLAYERS,
-# )
 from src.card import Card
+from src.discard_pile import DiscardPile
 
 pygame.init()
 
@@ -47,6 +31,7 @@ class GUI:
             for value in CARD_AMOUNTS.keys()
         }
         self.game = game
+        self.discard_pile: DiscardPile = None
         pygame.display.set_caption(CAPTION)
 
     def load_card(self, path: str, width: int, height: int):
@@ -60,6 +45,14 @@ class GUI:
         card = pygame.image.load(path)
         card = pygame.transform.scale(card, (width, height))
         return card
+
+    def set_discard_pile(self, discard_pile: DiscardPile):
+        """
+        Setter to set the discard pile which is initialized in round only
+        :param discard_pile:
+        :return:
+        """
+        self.discard_pile = discard_pile
 
     def draw_card(self, card: Card, x: int, y: int, rotation: int = 0):
         """
@@ -77,6 +70,19 @@ class GUI:
             card_to_draw = self.cardBack
             card_to_draw = pygame.transform.rotate(card_to_draw, rotation)
         self.window.blit(card_to_draw, (x, y))
+
+    def draw_discard_pile(self):
+        """
+        Given the discard pile (which is owned by round) draw the discard pile
+        :return:
+        """
+        if self.discard_pile:
+            self.draw_card(
+                self.discard_pile[-1],
+                x=self.discard_pile_position[0],
+                y=self.discard_pile_position[1],
+                rotation=0,
+            )
 
     def get_hands_positions(self):
         """
@@ -141,6 +147,8 @@ class GUI:
         self.window.blit(
             self.cardBack, self.main_deck_position
         )  # back of the Main deck
+
+        self.draw_discard_pile()
         ### below is a reference circle, to check coordinates on the screen
         # pygame.draw.circle(
         #     surface=self.window,

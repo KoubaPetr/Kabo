@@ -49,6 +49,9 @@ class Round:
         self.discard_pile: DiscardPile = DiscardPile([])
         self.main_deck: Deck = Deck(cards)
 
+        if self.game.using_gui:
+            self.game.GUI.set_discard_pile(self.discard_pile)
+
         # Reset players attributes which might have been altered in previous rounds
         self._reset_players()
 
