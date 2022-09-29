@@ -69,6 +69,3 @@ class Server:
             print("Connected to: ", addr)
 
             _thread.start_new_thread(self.threaded_client, (conn,))
-
-
-server = Server(2)

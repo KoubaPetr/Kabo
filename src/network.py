@@ -43,8 +43,3 @@ class Network:
             return self.client.recv(self.capacity_message).decode()
         except socket.error as err:
             print(err)
-
-
-n = Network()
-print(n.send("hello"))
-print(n.send("world"))
