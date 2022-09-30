@@ -4,6 +4,7 @@ import socket
 class Network:
     def __init__(
         self,
+        player_name: str,
         address: str = "192.168.0.104",
         port_num: int = 5555,
     ):
@@ -18,6 +19,7 @@ class Network:
         self.server_addr = (self.address, self.port)
         self.capacity_message = 2048
         self.id = self.connect()
+        self.send(data=player_name)
         print(self.id)
 
     def connect(self):

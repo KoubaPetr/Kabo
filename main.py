@@ -2,11 +2,43 @@
 Main script to run everything
 """
 from src.game import Game
+from src.server import Server
+from src.client import Client
 
 if __name__ == "__main__":
-    g = Game(
-        {"Petr": "HUMAN", "Anicka": "HUMAN"},
-        using_gui=True,
-    )
-    # TODO: throw GUI prompt for players names - shared for multiplayer ..?
-    g.play_game()
+    playing_multiplayer: bool = True
+    hosting_multiplayer: bool = True
+    connecting_multiplayer: bool = False
+
+    if not playing_multiplayer:
+        g = Game(
+            {"Petr": "HUMAN", "Anicka": "HUMAN"},
+            using_gui=True,
+        )
+        # TODO: throw GUI prompt for players names - shared for multiplayer ..?
+        g.play_game()
+
+    elif hosting_multiplayer:
+        number_of_players: int = 2
+        server: Server = Server(number_of_clients=number_of_players)
+        client_hosting: Client = Client(
+            player_name="Petr"
+        )  # TODO: during Client creation, ask the user for name
+        client_connecting: Client = Client(
+            player_name="Anicka"
+        )  # TODO: move below later
+
+        wait_for_players: bool = True
+        while wait_for_players:  # TODO: maybe check more robustly
+            if len(server.client_names) == number_of_players:
+                g = Game({p: "HUMAN" for p in server.client_names}, using_gui=True)
+                wait_for_players = False
+            elif len(server.client_names) >= number_of_players:
+                raise ValueError(
+                    f"Too many players! More than announced {number_of_players}."
+                )
+
+        # TODO: create GUIs for players (perhaps instead of for game, although that can be useful for an observer)
+
+    elif connecting_multiplayer:
+        ...  # TODO: later move other client initializations here

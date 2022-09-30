@@ -3,9 +3,10 @@ from src.network import Network
 
 
 class Client:
-    def __init__(self):
+    def __init__(self, player_name: str):
+        self.player_name = player_name
         self.run = True
-        self.network = Network()
+        self.network = Network(player_name=player_name)
         self.clock = pygame.time.Clock()
         self.ticking_unit = 60
 

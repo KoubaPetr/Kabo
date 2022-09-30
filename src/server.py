@@ -1,5 +1,6 @@
 import socket
 import _thread
+from typing import List
 import sys
 
 
@@ -25,6 +26,7 @@ class Server:
         self.receive_data_limit = 2048
         self.encoding = "utf-8"
         self.start_server()
+        self.client_names: List[str] = []
 
     def threaded_client(self, conn):
         """
@@ -33,6 +35,15 @@ class Server:
         :return:
         """
         conn.send(str.encode("Connected", encoding=self.encoding))
+        connected_player_name: str = conn.recv(self.receive_data_limit)
+
+        if connected_player_name not in self.client_names:
+            self.client_names.append(connected_player_name)
+        else:
+            raise ValueError(
+                f"Player {connected_player_name} already exists on the server!"
+            )
+
         reply = ""
         while True:
             try:
