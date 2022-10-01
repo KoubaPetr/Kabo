@@ -3,13 +3,10 @@ Main script to run everything
 """
 from src.game import Game
 from src.server import Server
-from src.client import Client
-import sys
 
 if __name__ == "__main__":
     playing_multiplayer: bool = True
     hosting_multiplayer: bool = True
-    connecting_multiplayer: bool = False
 
     if not playing_multiplayer:
         game = Game(
@@ -34,7 +31,3 @@ if __name__ == "__main__":
                 )
 
         server.set_game(game=game)
-        # TODO: create GUIs for players (perhaps instead of for game, although that can be useful for an observer)
-
-    elif connecting_multiplayer:
-        ...  # TODO: later move other client initializations here

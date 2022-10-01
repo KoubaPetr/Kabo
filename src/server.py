@@ -2,7 +2,6 @@ import socket
 import _thread
 from typing import List
 from src.game import Game
-import sys
 
 
 class Server:
@@ -46,7 +45,7 @@ class Server:
         """
         connected_socket.send(str.encode("Connected", encoding=self.encoding))
         connected_player_name: str = connected_socket.recv(self.receive_data_limit)
-
+        print("message_received by the server {}".format(connected_player_name))
         if connected_player_name not in self.client_names:
             decoded_name: str = connected_player_name.decode()
             self.client_names.append(decoded_name)
