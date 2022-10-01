@@ -1,6 +1,7 @@
 import socket
 import _thread
 from typing import List
+from src.game import Game
 import sys
 
 
@@ -27,6 +28,15 @@ class Server:
         self.encoding = "utf-8"
         self.start_server()
         self.client_names: List[str] = []
+        self.game: Game = None
+
+    def set_game(self, game: Game):
+        """
+        Setter to assign game to a server
+        :param game:
+        :return:
+        """
+        self.game = game
 
     def threaded_client(self, conn):
         """

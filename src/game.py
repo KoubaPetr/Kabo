@@ -46,6 +46,8 @@ class Game:
         self.using_gui: bool = using_gui
         if self.using_gui:
             self.GUI = GUI(game=self)  # for multiplayer we will have multiple GUIs
+            # TODO: here init GUIs for the players
+            # update GUIs by sending messages, probably no need to keep the server GUI
         else:
             self.GUI = None
 
