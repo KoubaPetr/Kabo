@@ -1,4 +1,4 @@
-from client import Client
+from src.client import Client
 
 client_hosting: Client = Client(
     player_name="Petr"
