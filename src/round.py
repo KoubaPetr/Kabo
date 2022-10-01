@@ -9,7 +9,7 @@ from src.deck import Deck
 
 # from src.game import Game
 from src.discard_pile import DiscardPile
-from src.rules import (
+from config.rules import (
     CARDS_PER_PLAYER,
     NUMBER_OF_CARDS_TO_SEE,
     NUMBER_OF_CARDS_FOR_KAMIKADZE,

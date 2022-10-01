@@ -4,7 +4,7 @@ which allowes interactive input by a user
 """
 from src.player import Player
 from src.round import Round
-from src.rules import ALLOWED_PLAYS, MAIN_DECK_CARD_DECISIONS
+from config.rules import ALLOWED_PLAYS, MAIN_DECK_CARD_DECISIONS
 from typing import List, Optional, Type, Tuple, TypeVar
 from src.card import Card
 

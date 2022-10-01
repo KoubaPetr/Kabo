@@ -5,7 +5,7 @@ from itertools import count
 from typing import List, Optional, Callable, Type, Tuple, Dict, TYPE_CHECKING
 from src.card import Card
 from src.round import Round
-from src.rules import ALLOWED_PLAYS, KABO_MALUS, POINT_VALUE_AFTER_HITTING_TARGET
+from config.rules import ALLOWED_PLAYS, KABO_MALUS, POINT_VALUE_AFTER_HITTING_TARGET
 
 if TYPE_CHECKING:
     from src.human_player import P

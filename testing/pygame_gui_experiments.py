@@ -1,5 +1,5 @@
 import pygame
-from graphics_config import CARD_BACK_IMAGE_PATH_SCRIBBLE
+from config.graphics_config import CARD_BACK_IMAGE_PATH_SCRIBBLE
 
 pygame.init()
 bounds = (1024, 768)

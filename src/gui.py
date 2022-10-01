@@ -1,8 +1,8 @@
 import pygame
 
 # from src.game import Game
-from src.rules import CARD_AMOUNTS
-from src.graphics_config import *
+from config.rules import CARD_AMOUNTS
+from config.graphics_config import *
 from typing import Dict, Tuple
 from src.card import Card
 from src.discard_pile import DiscardPile
