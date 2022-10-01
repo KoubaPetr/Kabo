@@ -26,9 +26,9 @@ class Server:
         )  # TODO: what are these arguments
         self.receive_data_limit = 2048
         self.encoding = "utf-8"
-        self.start_server()
         self.client_names: List[str] = []
         self.game: Game = None
+        self.start_server()
 
     def set_game(self, game: Game):
         """
@@ -38,17 +38,18 @@ class Server:
         """
         self.game = game
 
-    def threaded_client(self, conn):
+    def threaded_client(self, connected_socket):
         """
 
-        :param conn: connection of a new client
+        :param connected_socket: connection of a new client
         :return:
         """
-        conn.send(str.encode("Connected", encoding=self.encoding))
-        connected_player_name: str = conn.recv(self.receive_data_limit)
+        connected_socket.send(str.encode("Connected", encoding=self.encoding))
+        connected_player_name: str = connected_socket.recv(self.receive_data_limit)
 
         if connected_player_name not in self.client_names:
-            self.client_names.append(connected_player_name)
+            decoded_name: str = connected_player_name.decode()
+            self.client_names.append(decoded_name)
         else:
             raise ValueError(
                 f"Player {connected_player_name} already exists on the server!"
@@ -57,7 +58,7 @@ class Server:
         reply = ""
         while True:
             try:
-                data = conn.recv(self.receive_data_limit)
+                data = connected_socket.recv(self.receive_data_limit)
                 reply = data.decode(self.encoding)
                 if not data:
                     print("Disconected")
@@ -65,12 +66,12 @@ class Server:
                 else:
                     print("Received: ", reply)
                     print("Sending: ", reply)
-                conn.sendall(str.encode(reply, encoding=self.encoding))
+                connected_socket.sendall(str.encode(reply, encoding=self.encoding))
             except:
                 break
 
         print("Lost connection")
-        conn.close()
+        connected_socket.close()
 
     def start_server(self):
         """
@@ -86,7 +87,7 @@ class Server:
         print("Waiting for connection, Server Started")
 
         while True:
-            conn, addr = self.socket.accept()
-            print("Connected to: ", addr)
+            connected_socket, client_addr = self.socket.accept()
+            print("Connected to: ", client_addr)
 
-            _thread.start_new_thread(self.threaded_client, (conn,))
+            _thread.start_new_thread(self.threaded_client, (connected_socket,))

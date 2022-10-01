@@ -9,6 +9,10 @@ class Client:
         self.network = Network(player_name=player_name)
         self.clock = pygame.time.Clock()
         self.ticking_unit = 60
+        self.network.send_to_server(self.player_name)  # send your name to the server
+
+    def ask_for_init_game_setup(self):
+        pass
 
     def client_loop(self):
 
