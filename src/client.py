@@ -1,5 +1,6 @@
 import pygame
 import socket
+from typing import Tuple
 
 
 class Client:
@@ -9,19 +10,19 @@ class Client:
         address: str = "192.168.0.104",
         port_num: int = 5555,
     ):
-        self.player_name = player_name
-        self.run = True
-        self.address = address  # confusing naming? See address vs addr
-        self.port = port_num
+        self.player_name: str = player_name
+        self.run: bool = True
+        self.address: str = address  # confusing naming? See address vs addr
+        self.port: int = port_num
         self.clock = pygame.time.Clock()
-        self.ticking_unit = 60
+        self.ticking_unit: int = 60
         self.client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.server_addr = (self.address, self.port)
-        self.capacity_message = 2048
-        self.id = self.connect()  # receives return message - right now "Connected"
-        print(self.id)
+        self.server_addr: Tuple[str, int] = (self.address, self.port)
+        self.capacity_message: int = 2048
+        self.id: int = int(self.connect())  # receives return message
+        print("Client ID = {}".format(self.id))
         self.send_to_server(data=self.player_name)
-        # TODO: ask for init game setup
+        self.init_setup: dict = self.ask_for_init_game_setup()
         # TODO: Create GUI
         # TODO: run client loop
 
@@ -55,7 +56,9 @@ class Client:
         Ask the server how many players there are and what is the initial card at discard pile
         :return:
         """
-        pass
+        init_setup_message: str = self.send_to_server("Init me")
+        decoded_init_setup: dict = ...  # TODO
+        return decoded_init_setup
 
     def client_loop(self):
 

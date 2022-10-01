@@ -36,6 +36,7 @@ class Server:
         :return:
         """
         self.game = game
+        print("Game was set up for the server")
 
     def threaded_client(self, connected_socket):
         """
@@ -43,7 +44,7 @@ class Server:
         :param connected_socket: connection of a new client
         :return:
         """
-        connected_socket.send(str.encode("Connected", encoding=self.encoding))
+        connected_socket.send(len(self.client_names))
         connected_player_name: str = connected_socket.recv(self.receive_data_limit)
         print("message_received by the server {}".format(connected_player_name))
         if connected_player_name not in self.client_names:
@@ -57,11 +58,15 @@ class Server:
         reply = ""
         while True:
             try:
-                data = connected_socket.recv(self.receive_data_limit)
-                reply = data.decode(self.encoding)
-                if not data:
+                clients_message = connected_socket.recv(self.receive_data_limit)
+                clients_message = clients_message.decode(self.encoding)
+                if not clients_message:
                     print("Disconected")
                     break
+                elif clients_message == "Init me":
+                    init_state: str = (
+                        "{}".format()
+                    )  # TODO: format number of players and discard pile top card (this needs access to round)
                 else:
                     print("Received: ", reply)
                     print("Sending: ", reply)
@@ -86,6 +91,14 @@ class Server:
         print("Waiting for connection, Server Started")
 
         while True:
+            ### If enough players joined, start the game
+            if len(self.client_names) == self.num_clients:
+                game = Game(
+                    {p: "HUMAN" for p in self.client_names}, using_gui=True
+                )  ###TODO: Is this now in the correct thread?
+                self.set_game(game=game)
+                self.game.play_game()  # starting the game!
+
             connected_socket, client_addr = self.socket.accept()
             print("Connected to: ", client_addr)
 
