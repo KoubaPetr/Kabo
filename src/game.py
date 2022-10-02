@@ -44,12 +44,10 @@ class Game:
         self.rounds: List[Round] = []  # to remember the rounds
 
         self.using_gui: bool = using_gui
-        if self.using_gui:
-            self.GUI = GUI(game=self)  # for multiplayer we will have multiple GUIs
-            # TODO: here init GUIs for the players
-            # update GUIs by sending messages, probably no need to keep the server GUI
-        else:
-            self.GUI = None
+        # if self.using_gui:
+        #     self.GUI = GUI(game=self)  # for multiplayer we will have multiple GUIs
+        # else:
+        #     self.GUI = None
 
     def __repr__(self):
         """
@@ -58,7 +56,7 @@ class Game:
         """
         return f"Game({self.player_name_list})"
 
-    def _play_round(self) -> Round:
+    def _init_round(self) -> Round:
         """
         Function to play a new _round
         :return:
@@ -84,12 +82,14 @@ class Game:
         """
 
         while True:
-            if self.GUI:
-                self.GUI.update_screen()  # TODO: maybe not necessary to update here
+            # if self.GUI:
+            #     self.GUI.update_screen()  # TODO: maybe not necessary to update here
             _round: Round = (
-                self._play_round()
+                self._init_round()
             )  # TODO: go inside the round loop and update the gui there
             self.rounds.append(_round)
+            self.rounds[-1].start_playing()
+
             _scores: Dict[Type[P], int] = self._read_players_game_scores()
             _play_next_round: bool = True
 

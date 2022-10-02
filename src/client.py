@@ -1,6 +1,6 @@
 import pygame
 import socket
-from typing import Tuple
+from typing import Tuple, List
 
 
 class Client:
@@ -57,7 +57,11 @@ class Client:
         :return:
         """
         init_setup_message: str = self.send_to_server("Init me")
-        decoded_init_setup: dict = ...  # TODO
+        init_setup_message_split: List[str] = init_setup_message.split()
+        decoded_init_setup: dict = {
+            "num_players": int(init_setup_message_split[0]),
+            "discard_pile": int(init_setup_message_split[1]),
+        }
         return decoded_init_setup
 
     def client_loop(self):

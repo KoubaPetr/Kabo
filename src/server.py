@@ -64,18 +64,50 @@ class Server:
                     print("Disconected")
                     break
                 elif clients_message == "Init me":
-                    init_state: str = (
-                        "{}".format()
-                    )  # TODO: format number of players and discard pile top card (this needs access to round)
+                    dont_break: bool = self.handle_init_message()
+                    if not dont_break:
+                        break
+                elif ...:  # handle further messages here
+                    pass
                 else:
-                    print("Received: ", reply)
-                    print("Sending: ", reply)
-                connected_socket.sendall(str.encode(reply, encoding=self.encoding))
+                    raise ValueError("Unexpected message from the client")
+
             except:
                 break
 
         print("Lost connection")
         connected_socket.close()
+
+    def handle_init_message(
+        self, clients_message: str, connected_socket: socket.socket
+    ) -> bool:
+        """
+
+        :param clients_message: expected message "Init me"
+        :param connected_socket: socket for communication
+        :return: bool whether to continue to while loop
+        """
+        if not clients_message:
+            print("Disconected")
+            return False
+        elif clients_message == "Init me":
+            _waiting: bool = True
+            while _waiting:
+                if self.game.rounds and self.game.rounds[-1].discard_pile:
+                    init_state: str = "{} {}".format(
+                        self.game.num_players,
+                        self.game.rounds[-1].discard_pile[-1].value,
+                    )
+                    connected_socket.sendall(
+                        str.encode(init_state, encoding=self.encoding)
+                    )
+                    _waiting = False
+                else:
+                    pass
+            return True
+        else:
+            print("Unexpected message from the client")
+            return False
 
     def start_server(self):
         """

@@ -49,8 +49,8 @@ class Round:
         self.discard_pile: DiscardPile = DiscardPile([])
         self.main_deck: Deck = Deck(cards)
 
-        if self.game.using_gui:
-            self.game.GUI.set_discard_pile(self.discard_pile)
+        # if self.game.using_gui:
+        #     self.game.GUI.set_discard_pile(self.discard_pile)
 
         # Reset players attributes which might have been altered in previous rounds
         self._reset_players()
@@ -62,15 +62,8 @@ class Round:
         # Init the discard pile
         _first_discarded_card: Card = self.main_deck.cards.pop()
         self.discard_card(_first_discarded_card)
-        if self.game.using_gui:
-            self.game.GUI.update_screen()
-        # Start actions of players
-        self._let_players_see_cards()  # TODO: show in the GUI when there is a multiplayer
-        self._start_playing()
-
-        # Update players score after round
-        self._update_players_game_scores()
-        # TODO: show scores?
+        # if self.game.using_gui:
+        #     self.game.GUI.update_screen()
 
     def _deal_cards_to_players(self) -> None:
         """
@@ -107,12 +100,15 @@ class Round:
             )
             player.report_known_cards_on_hand()
 
-    def _start_playing(self):
+    def start_playing(self):
         """
         Method calling the Players to play until the end of Round is reached.
 
         :return:
         """
+        # Start actions of players
+        self._let_players_see_cards()  # TODO: show in the GUI when there is a multiplayer
+
         _players_cycle: cycle = cycle(self.players)
         _kabo_counter: int = len(self.players)
         _kabo_active: bool = False
@@ -123,8 +119,8 @@ class Round:
 
             current_player: "Player" = next(_players_cycle)
             kabo_called = current_player.perform_turn(_round=self)
-            if self.game.using_gui:
-                self.game.GUI.update_screen()
+            # if self.game.using_gui:
+            #     self.game.GUI.update_screen()
 
             if kabo_called:
                 self.kabo_called = True
@@ -132,6 +128,9 @@ class Round:
 
             if _kabo_active:
                 _kabo_counter -= 1
+
+        # Update players score after round
+        self._update_players_game_scores()
 
     def _reset_players(self) -> None:
         """
