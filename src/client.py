@@ -1,6 +1,7 @@
 import pygame
 import socket
 from typing import Tuple, List
+from src.gui import GUI
 
 
 class Client:
@@ -23,7 +24,10 @@ class Client:
         print("Client ID = {}".format(self.id))
         self.send_to_server(data=self.player_name)
         self.init_setup: dict = self.ask_for_init_game_setup()
-        # TODO: Create GUI
+        self.gui = GUI(self.init_setup["num_players"], self.init_setup["discard_pile"])
+        # TODO: Continue interacting with the GUI + change the GUI class so that it doesnt use Players nor Game and only uses messages
+        # TODO: Check that we dont need the Card Ids as these might get mixed up by creating new cards for each GUI
+        # TODO: as part of the init, should we tell the client what cards were drawn? - try without this, the image can be loaded upon getting info from server
         # TODO: run client loop
 
     def connect(self):

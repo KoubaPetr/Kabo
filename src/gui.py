@@ -1,6 +1,4 @@
 import pygame
-
-# from src.game import Game
 from config.rules import CARD_AMOUNTS
 from config.graphics_config import *
 from typing import Dict, Tuple
@@ -11,7 +9,7 @@ pygame.init()
 
 
 class GUI:
-    def __init__(self, game):  # TODO: Game not typed due to circular import
+    def __init__(self, num_players: int, val_at_discard_pile: int):
         self.bounds = BOUNDS
         self.window = pygame.display.set_mode(self.bounds)
         self.card_width = CARD_WIDTH
@@ -19,6 +17,7 @@ class GUI:
         self.card_gap = HAND_CARD_GAP
         self.main_deck_position = MAIN_DECK_POSITION
         self.discard_pile_position = DISCARD_PILE_POSITION
+        self.num_players = num_players
         self.cardBack = self.load_card(
             CARD_BACK_IMAGE_PATH_SCRIBBLE, CARD_WIDTH, CARD_HEIGHT
         )
@@ -30,8 +29,9 @@ class GUI:
             )
             for value in CARD_AMOUNTS.keys()
         }
-        self.game = game
-        self.discard_pile: DiscardPile = None
+        self.discard_pile: DiscardPile = DiscardPile(
+            [Card(val_at_discard_pile, True)]
+        )  # add the cards to this as they come
         pygame.display.set_caption(CAPTION)
 
     def load_card(self, path: str, width: int, height: int):
@@ -45,14 +45,6 @@ class GUI:
         card = pygame.image.load(path)
         card = pygame.transform.scale(card, (width, height))
         return card
-
-    def set_discard_pile(self, discard_pile: DiscardPile):
-        """
-        Setter to set the discard pile which is initialized in round only
-        :param discard_pile:
-        :return:
-        """
-        self.discard_pile = discard_pile
 
     def draw_card(self, card: Card, x: int, y: int, rotation: int = 0):
         """
