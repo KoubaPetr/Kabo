@@ -80,7 +80,7 @@ class Game:
         Call for new rounds and check the score in the meantime, to see whether the game did not finish
         :return:
         """
-
+        print("Game started")
         while True:
             # if self.GUI:
             #     self.GUI.update_screen()  # TODO: maybe not necessary to update here

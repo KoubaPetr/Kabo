@@ -22,7 +22,8 @@ class Client:
         self.capacity_message: int = 2048
         self.id: int = int(self.connect())  # receives return message
         print("Client ID = {}".format(self.id))
-        self.send_to_server(data=self.player_name)
+        return_msg: str = self.send_to_server(data=self.player_name)
+        print(return_msg)
         self.init_setup: dict = self.ask_for_init_game_setup()
         self.gui = GUI(self.init_setup["num_players"], self.init_setup["discard_pile"])
         # TODO: Continue interacting with the GUI + change the GUI class so that it doesnt use Players nor Game and only uses messages

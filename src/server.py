@@ -1,5 +1,6 @@
 import socket
 import _thread
+import threading
 from typing import List
 from src.game import Game
 
@@ -27,7 +28,41 @@ class Server:
         self.encoding = "utf-8"
         self.client_names: List[str] = []
         self.game: Game = None
+        self.lock = threading.Lock()
         self.start_server()
+
+    def start_server(self):
+        """
+        Bind the port and start listening for connections
+        :return:
+        """
+        try:
+            self.socket.bind((self.address, self.port))
+        except socket.error as err:
+            str(err)  # TODO: is this correct handling?
+
+        self.socket.listen(self.num_clients)
+        print("Waiting for connection, Server Started")
+
+        while True:
+            connected_socket, client_addr = self.socket.accept()
+            print("Connected to: ", client_addr)
+            self.lock.acquire()
+            _thread.start_new_thread(self.threaded_client, (connected_socket,))
+
+            ### If enough players joined, start the game
+            print(
+                "client names = {} num_clients = {}".format(
+                    self.client_names, self.num_clients
+                )
+            )
+            if len(self.client_names) == self.num_clients:
+                print("Starting game")
+                game = Game(
+                    {p: "HUMAN" for p in self.client_names}, using_gui=True
+                )  ###TODO: Is this now in the correct thread?
+                self.set_game(game=game)
+                self.game.play_game()  # starting the game!
 
     def set_game(self, game: Game):
         """
@@ -44,12 +79,21 @@ class Server:
         :param connected_socket: connection of a new client
         :return:
         """
-        connected_socket.send(len(self.client_names))
+        player_id_encoded: str = str(len(self.client_names)).encode(
+            encoding=self.encoding
+        )
+        print(player_id_encoded)
+        connected_socket.send(player_id_encoded)
         connected_player_name: str = connected_socket.recv(self.receive_data_limit)
         print("message_received by the server {}".format(connected_player_name))
+        connected_socket.send(
+            "Welcome in the game {}".format(connected_player_name).encode(self.encoding)
+        )
         if connected_player_name not in self.client_names:
             decoded_name: str = connected_player_name.decode()
             self.client_names.append(decoded_name)
+            print("client_names from threaded client are {}".format(self.client_names))
+            self.lock.release()
         else:
             raise ValueError(
                 f"Player {connected_player_name} already exists on the server!"
@@ -64,7 +108,10 @@ class Server:
                     print("Disconected")
                     break
                 elif clients_message == "Init me":
-                    dont_break: bool = self.handle_init_message()
+                    dont_break: bool = self.handle_init_message(
+                        clients_message=clients_message,
+                        connected_socket=connected_socket,
+                    )
                     if not dont_break:
                         break
                 elif ...:  # handle further messages here
@@ -72,7 +119,8 @@ class Server:
                 else:
                     raise ValueError("Unexpected message from the client")
 
-            except:
+            except Exception as e:
+                print(e)
                 break
 
         print("Lost connection")
@@ -93,7 +141,7 @@ class Server:
         elif clients_message == "Init me":
             _waiting: bool = True
             while _waiting:
-                if self.game.rounds and self.game.rounds[-1].discard_pile:
+                if self.game and self.game.rounds and self.game.rounds[-1].discard_pile:
                     init_state: str = "{} {}".format(
                         self.game.num_players,
                         self.game.rounds[-1].discard_pile[-1].value,
@@ -108,30 +156,3 @@ class Server:
         else:
             print("Unexpected message from the client")
             return False
-
-    def start_server(self):
-        """
-        Bind the port and start listening for connections
-        :return:
-        """
-        try:
-            self.socket.bind((self.address, self.port))
-        except socket.error as err:
-            str(err)  # TODO: is this correct handling?
-
-        self.socket.listen(self.num_clients)
-        print("Waiting for connection, Server Started")
-
-        while True:
-            ### If enough players joined, start the game
-            if len(self.client_names) == self.num_clients:
-                game = Game(
-                    {p: "HUMAN" for p in self.client_names}, using_gui=True
-                )  ###TODO: Is this now in the correct thread?
-                self.set_game(game=game)
-                self.game.play_game()  # starting the game!
-
-            connected_socket, client_addr = self.socket.accept()
-            print("Connected to: ", client_addr)
-
-            _thread.start_new_thread(self.threaded_client, (connected_socket,))
