@@ -50,6 +50,15 @@ class Server:
             # self.lock.acquire()
             _thread.start_new_thread(self.threaded_client, (connected_socket,))
 
+            """
+            
+            Description of current issue: here the self.client_names seem to not get updated, 
+            when it is updated from the new thread (when second player is added there, 
+            here is still just one, and it falls behind by one player) How to synchronize the threads the best?
+            
+            => the Game does not get initialized here when both players join
+            
+            """
             ### If enough players joined, start the game
             print(
                 "client names = {} num_clients = {}".format(
