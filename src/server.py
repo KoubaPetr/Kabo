@@ -28,7 +28,7 @@ class Server:
         self.encoding = "utf-8"
         self.client_names: List[str] = []
         self.game: Game = None
-        self.lock = threading.Lock()
+        # self.lock = threading.Lock()
         self.start_server()
 
     def start_server(self):
@@ -47,7 +47,7 @@ class Server:
         while True:
             connected_socket, client_addr = self.socket.accept()
             print("Connected to: ", client_addr)
-            self.lock.acquire()
+            # self.lock.acquire()
             _thread.start_new_thread(self.threaded_client, (connected_socket,))
 
             ### If enough players joined, start the game
@@ -93,7 +93,7 @@ class Server:
             decoded_name: str = connected_player_name.decode()
             self.client_names.append(decoded_name)
             print("client_names from threaded client are {}".format(self.client_names))
-            self.lock.release()
+            # self.lock.release()
         else:
             raise ValueError(
                 f"Player {connected_player_name} already exists on the server!"
