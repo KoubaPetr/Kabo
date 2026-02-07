@@ -1,6 +1,7 @@
 """
 Class Round
 """
+import os
 from itertools import count, cycle
 from typing import TYPE_CHECKING, List, Dict, Optional, Type
 import collections
@@ -31,8 +32,13 @@ class Round:
 
     _id_incremental: count = count(0)
 
+    @classmethod
+    def reset_id_counter(cls):
+        cls._id_incremental = count(0)
+
     def __init__(
-        self, cards: List[Card], players: List["Player"], game
+        self, cards: List[Card], players: List["Player"], game,
+        start_player_index: int = 0
     ):  # TODO: game not typed due to circular import
         """
         Constructor method
@@ -40,7 +46,7 @@ class Round:
         # Init round attributes
         self.round_id: int = next(self._id_incremental)
         self.players: List[Type[Player]] = (
-            players[self.round_id :] + players[: self.round_id]
+            players[start_player_index:] + players[:start_player_index]
         )
         self.game = game
         self.kabo_called: bool = (
@@ -49,8 +55,6 @@ class Round:
         self.discard_pile: DiscardPile = DiscardPile([])
         self.main_deck: Deck = Deck(cards)
 
-        # if self.game.using_gui:
-        #     self.game.GUI.set_discard_pile(self.discard_pile)
 
         # Reset players attributes which might have been altered in previous rounds
         self._reset_players()
@@ -62,8 +66,6 @@ class Round:
         # Init the discard pile
         _first_discarded_card: Card = self.main_deck.cards.pop()
         self.discard_card(_first_discarded_card)
-        # if self.game.using_gui:
-        #     self.game.GUI.update_screen()
 
     def _deal_cards_to_players(self) -> None:
         """
@@ -100,14 +102,14 @@ class Round:
             )
             player.report_known_cards_on_hand()
 
-    def start_playing(self):
+    def start_playing(self, gui=None):
         """
         Method calling the Players to play until the end of Round is reached.
-
+        :param gui: Optional GUI instance for rendering
         :return:
         """
         # Start actions of players
-        self._let_players_see_cards()  # TODO: show in the GUI when there is a multiplayer
+        self._let_players_see_cards()
 
         _players_cycle: cycle = cycle(self.players)
         _kabo_counter: int = len(self.players)
@@ -118,9 +120,16 @@ class Round:
                 break
 
             current_player: "Player" = next(_players_cycle)
+
+            # Clear screen between turns for hot-seat privacy
+            os.system('cls' if os.name == 'nt' else 'clear')
+            print(f"--- {current_player.name}'s turn ---")
+            current_player.report_known_cards_on_hand()
+
             kabo_called = current_player.perform_turn(_round=self)
-            # if self.game.using_gui:
-            #     self.game.GUI.update_screen()
+
+            if gui:
+                gui.update_screen([p.hand for p in self.players])
 
             if kabo_called:
                 self.kabo_called = True

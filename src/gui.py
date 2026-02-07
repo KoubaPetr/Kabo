@@ -1,7 +1,7 @@
 import pygame
 from config.rules import CARD_AMOUNTS
 from config.graphics_config import *
-from typing import Dict, Tuple
+from typing import Dict, List, Tuple
 from src.card import Card
 from src.discard_pile import DiscardPile
 
@@ -30,9 +30,12 @@ class GUI:
             for value in CARD_AMOUNTS.keys()
         }
         self.discard_pile: DiscardPile = DiscardPile(
-            [Card(val_at_discard_pile, True)]
+            [Card(val_at_discard_pile)]
         )  # add the cards to this as they come
         pygame.display.set_caption(CAPTION)
+
+    def set_discard_pile(self, discard_pile: DiscardPile):
+        self.discard_pile = discard_pile
 
     def load_card(self, path: str, width: int, height: int):
         """
@@ -81,7 +84,7 @@ class GUI:
         Based on the number of players, return the hand positions and orientations for the correct layout
         :return: hand_directions, hand_origins, rotation_degrees
         """
-        if self.game.num_players == 2:
+        if self.num_players == 2:
             hand_directions, hand_origins, rotation_degrees = (
                 PLAYER_HANDS_DIRECTION_2_PLAYERS,
                 PLAYER_HANDS_ORIGIN_2_PLAYERS,
@@ -129,60 +132,48 @@ class GUI:
         )
         return new_card_width_position, new_card_height_position, rotation_degree
 
-    def render_game(self):
+    def render_game(self, player_hands: List[List[Card]] = None):
         """
         Render the GUI
+        :param player_hands: List of lists of Cards, one per player. If None, renders only the decks.
         :return:
         """
         self.window.fill(BACKGROUND_COLOR)
-        # font = pygame.font.SysFont("arial", 60, True)
         self.window.blit(
             self.cardBack, self.main_deck_position
         )  # back of the Main deck
 
         self.draw_discard_pile()
-        ### below is a reference circle, to check coordinates on the screen
-        # pygame.draw.circle(
-        #     surface=self.window,
-        #     color="black",
-        #     center=(
-        #         BOUNDS[0] / 2 - (4 * CARD_WIDTH + 3 * HAND_CARD_GAP) / 2,
-        #         HAND_EDGE_GAP,
-        #     ),
-        #     radius=5,
-        # )
         hand_directions, hand_origins, rotation_degrees = self.get_hands_positions()
 
-        for p_position, p in enumerate(self.game.players):  # render players hands
-            # TODO: handle the case with too many cards on hand
-            # TODO: Probably show players names and scores
-            # TODO: fix the card orientation - to make it constant given a reference player
-            # TODO: GUIs for each player - use rotation to have the player owning the gui in the "pole" position
-            for c_position, c in enumerate(p.hand):  # render cards in those hands
-                (
-                    new_card_width_position,
-                    new_card_height_position,
-                    rotation_degree,
-                ) = self.get_card_in_hand_position(
-                    hand_directions,
-                    hand_origins,
-                    rotation_degrees,
-                    p_position,
-                    c_position,
-                )
-                self.draw_card(
-                    card=c,
-                    x=new_card_width_position,
-                    y=new_card_height_position,
-                    rotation=rotation_degree,
-                )
+        if player_hands:
+            for p_position, hand in enumerate(player_hands):
+                for c_position, c in enumerate(hand):
+                    (
+                        new_card_width_position,
+                        new_card_height_position,
+                        rotation_degree,
+                    ) = self.get_card_in_hand_position(
+                        hand_directions,
+                        hand_origins,
+                        rotation_degrees,
+                        p_position,
+                        c_position,
+                    )
+                    self.draw_card(
+                        card=c,
+                        x=new_card_width_position,
+                        y=new_card_height_position,
+                        rotation=rotation_degree,
+                    )
 
-    def update_screen(self):
+    def update_screen(self, player_hands: List[List[Card]] = None):
         """
         Update the appearance of GUI
+        :param player_hands: List of lists of Cards, one per player
         :return:
         """
-        self.render_game()
+        self.render_game(player_hands)
         pygame.display.update()
 
     # TODO: functions to animate moves (such as swap, peak, card exchange etc.)

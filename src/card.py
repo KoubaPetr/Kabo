@@ -2,9 +2,6 @@
 Class Card
 """
 import collections
-import pygame
-
-pygame.init()  # is this needed for every module?
 from itertools import count
 from typing import TYPE_CHECKING, List, Optional
 
@@ -15,9 +12,6 @@ from config.rules import (
     CARD_EFFECTS,
     CARD_LEGAL_VALUES,
     NUM_KINDS_FOR_MULTIPLE_DISCARD,
-)
-from config.graphics_config import (
-    CARD_IMAGE_PATH_SCRIBBLE,
 )
 
 
@@ -30,7 +24,11 @@ class Card:
 
     _id_incremental: count = count(0)
 
-    def __init__(self, value: int, using_gui: bool = False):
+    @classmethod
+    def reset_id_counter(cls):
+        cls._id_incremental = count(0)
+
+    def __init__(self, value: int):
         """
         Constructor method
         """
@@ -54,8 +52,6 @@ class Card:
         self.known_to_other_players: List[Player] = []
         self.status: str = "MAIN_DECK"  # other options are DISCARD_PILE and HAND
         self.owner: Optional[Player] = None
-        if using_gui:
-            self.image = pygame.image.load(CARD_IMAGE_PATH_SCRIBBLE.format(value))
 
     def __repr__(self):
         """
