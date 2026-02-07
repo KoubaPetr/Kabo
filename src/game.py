@@ -9,7 +9,6 @@ from src.computer_player import ComputerPlayer
 from src.network_player import NetworkPlayer
 from src.round import Round
 from config.rules import ALLOWED_PLAYER_COUNTS, CARD_AMOUNTS, TARGET_POINT_VALUE
-from src.gui import GUI
 
 
 class Game:
@@ -25,7 +24,7 @@ class Game:
     }
 
     def __init__(self, player_names_and_chars: Dict[str, str] = None,
-                 using_gui: bool = False, players: List = None):
+                 players: List = None):
         """
         Constructor method. Either pass player_names_and_chars dict to create players,
         or pass pre-created player instances directly.
@@ -56,9 +55,6 @@ class Game:
         self.num_players: int = len(self.players)
         self.rounds: List[Round] = []  # to remember the rounds
         self._start_player_index: int = 0  # index of starting player for next round
-
-        self.using_gui: bool = using_gui
-        self.GUI = None
 
     def __repr__(self):
         """
@@ -96,16 +92,8 @@ class Game:
         while True:
             _round: Round = self._init_round()
 
-            if self.using_gui and self.GUI is None:
-                import pygame
-                pygame.init()
-                self.GUI = GUI(self.num_players, _round.discard_pile[-1].value)
-
-            if self.GUI:
-                self.GUI.set_discard_pile(_round.discard_pile)
-                self.GUI.update_screen([p.hand for p in self.players])
             self.rounds.append(_round)
-            self.rounds[-1].start_playing(gui=self.GUI)
+            self.rounds[-1].start_playing()
 
             _scores: Dict[Type[P], int] = self._read_players_game_scores()
             _play_next_round: bool = True

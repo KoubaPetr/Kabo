@@ -3,29 +3,29 @@ channels:
   - conda-forge
   - defaults
 dependencies:
-  - bzip2=1.0.8=h1de35cc_0
-  - ca-certificates=2021.10.8=h033912b_0
-  - certifi=2021.10.8=py310h2ec42d9_2
-  - libcxx=12.0.0=h2f01273_0
-  - libffi=3.3=hb1e8313_2
-  - mypy=0.942=py310h1961e1f_0
-  - mypy_extensions=0.4.3=py310hecd8cb5_1
-  - ncurses=6.3=hca72f7f_2
-  - openssl=1.1.1n=h6c3fc93_0
-  - psutil=5.8.0=py310hca72f7f_1
-  - python=3.10.4=hdfd78df_0
-  - python_abi=3.10=2_cp310
-  - readline=8.1.2=hca72f7f_1
-  - setuptools=61.2.0=py310hecd8cb5_0
-  - sqlite=3.38.2=h707629a_0
-  - tk=8.6.11=h7bc2e8c_0
-  - toml=0.10.2=pyhd3eb1b0_0
-  - tomli=2.0.1=pyhd8ed1ab_0
-  - typing_extensions=4.1.1=pyh06a4308_0
-  - tzdata=2022a=hda174b7_0
-  - wheel=0.37.1=pyhd3eb1b0_0
-  - xz=5.2.5=h1de35cc_0
-  - zlib=1.2.11=h4dc903c_4
+  - bzip2=1.0.8
+  - ca-certificates
+  - certifi
+  - libcxx=12.0.0
+  - libffi=3.3
+  - mypy
+  - mypy_extensions
+  - ncurses=6.3
+  - openssl
+  - psutil
+  - python=3.10.4
+  - python_abi=3.10
+  - readline=8.1.2
+  - setuptools
+  - sqlite=3.38.2
+  - tk=8.6.11
+  - toml=0.10.2
+  - tomli
+  - typing_extensions
+  - tzdata=2022a
+  - wheel
+  - xz=5.2.5
+  - zlib=1.2.11
   - pip:
     - astroid==2.11.3
     - black==22.3.0
@@ -40,7 +40,6 @@ dependencies:
     - platformdirs==2.5.2
     - pycodestyle==2.8.0
     - pyflakes==2.4.0
-    - pygame==2.1.2
-    - pylint==2.13.7
+- pylint==2.13.7
     - wrapt==1.14.0
 prefix: /Users/petrkouba/opt/anaconda3/envs/Kabo

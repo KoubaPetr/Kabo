@@ -102,10 +102,9 @@ class Round:
             )
             player.report_known_cards_on_hand()
 
-    def start_playing(self, gui=None):
+    def start_playing(self):
         """
         Method calling the Players to play until the end of Round is reached.
-        :param gui: Optional GUI instance for rendering
         :return:
         """
         # Start actions of players
@@ -127,9 +126,6 @@ class Round:
             current_player.report_known_cards_on_hand()
 
             kabo_called = current_player.perform_turn(_round=self)
-
-            if gui:
-                gui.update_screen([p.hand for p in self.players])
 
             if kabo_called:
                 self.kabo_called = True

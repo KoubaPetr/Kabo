@@ -2,8 +2,7 @@
 Main script to run the Kabo card game.
 
 Usage:
-    python main.py                           # Hot-seat mode, 2 human players, no GUI
-    python main.py --gui                     # Hot-seat mode with GUI
+    python main.py                           # Hot-seat mode, 2 human players
     python main.py --players Petr Anicka Jan # 3 human players
     python main.py --ai 1                   # 1 human + 1 AI
     python main.py --mode server --num-players 2  # Start server
@@ -17,7 +16,6 @@ def main():
     parser = argparse.ArgumentParser(description="Kabo Card Game")
     parser.add_argument("--mode", choices=["hotseat", "server", "client"],
                         default="hotseat", help="Game mode")
-    parser.add_argument("--gui", action="store_true", help="Enable GUI")
     parser.add_argument("--players", nargs="+", default=["Petr", "Anicka"],
                         help="Player names (hot-seat mode)")
     parser.add_argument("--ai", type=int, default=0,
@@ -37,7 +35,7 @@ def main():
         player_config = {name: "HUMAN" for name in args.players}
         for i in range(args.ai):
             player_config[f"AI_{i + 1}"] = "COMPUTER"
-        game = Game(player_config, using_gui=args.gui)
+        game = Game(player_config)
         game.play_game()
 
     elif args.mode == "server":
