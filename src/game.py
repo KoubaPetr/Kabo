@@ -23,6 +23,12 @@ class Game:
         "COMPUTER": ComputerPlayer,
     }
 
+    try:
+        from src.web.web_player import WebPlayer
+        characters_to_child_classes["WEB"] = WebPlayer
+    except ImportError:
+        pass
+
     def __init__(self, player_names_and_chars: Dict[str, str] = None,
                  players: List = None):
         """

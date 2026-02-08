@@ -8,6 +8,7 @@ Usage:
     python main.py --players Petr --ai 1    # 1 human + 1 AI (2 total)
     python main.py --mode server --num-players 2  # Start server
     python main.py --mode client --name Petr      # Join as client
+    python main.py --mode web                    # Browser GUI at http://localhost:8080
 """
 import argparse
 from src.game import Game
@@ -15,7 +16,7 @@ from src.game import Game
 
 def main():
     parser = argparse.ArgumentParser(description="Kabo Card Game")
-    parser.add_argument("--mode", choices=["hotseat", "server", "client"],
+    parser.add_argument("--mode", choices=["hotseat", "server", "client", "web"],
                         default="hotseat", help="Game mode")
     parser.add_argument("--players", nargs="+", default=["Petr", "Anicka"],
                         help="Names of HUMAN players (e.g. --players Alice Bob)")
@@ -63,6 +64,10 @@ def main():
         client = Client(player_name=args.name, address=args.address,
                         port_num=args.port)
         client.run()
+
+    elif args.mode == "web":
+        from src.web.app import start_web_gui
+        start_web_gui()
 
 
 if __name__ == "__main__":

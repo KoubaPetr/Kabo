@@ -96,7 +96,7 @@ class Round:
         :return:
         """
         for player in self.players:
-            if player.character != "COMPUTER":
+            if player.character not in ("COMPUTER", "WEB"):
                 input(f"\n>>> {player.name}, press Enter to peek at your cards...")
                 os.system('cls' if os.name == 'nt' else 'clear')
             _which_cards = player.card_checking_preference()
@@ -123,9 +123,9 @@ class Round:
 
             current_player: "Player" = next(_players_cycle)
 
-            if current_player.character == "COMPUTER":
-                # AI turn: print actions visibly, no screen clear
-                print(f"\n--- {current_player.name}'s turn (AI) ---")
+            if current_player.character in ("COMPUTER", "WEB"):
+                # AI/Web turn: print actions visibly, no screen clear
+                print(f"\n--- {current_player.name}'s turn{' (AI)' if current_player.character == 'COMPUTER' else ''} ---")
             else:
                 # Human turn: pause so player can read AI actions, then clear
                 input(f"\n>>> {current_player.name}, press Enter to start your turn...")
