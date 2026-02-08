@@ -59,6 +59,7 @@ class ComputerPlayer(Player):
     def pick_turn_type(self, _round: Round = None) -> str:
         estimated = self._estimated_hand_sum()
         if estimated <= KABO_THRESHOLD:
+            print(f"  {self.name} calls KABO!")
             return "KABO"
 
         # Check discard pile top - if it's low and we have a known high card, take it
@@ -68,8 +69,10 @@ class ComputerPlayer(Player):
             if highest_idx is not None:
                 highest_val = self.hand[highest_idx].value
                 if discard_top < highest_val and discard_top <= 4:
+                    print(f"  {self.name} takes from the discard pile (card value {discard_top}).")
                     return "HIT_DISCARD_PILE"
 
+        print(f"  {self.name} draws from the deck.")
         return "HIT_DECK"
 
     def decide_on_card_use(self, card: Card) -> str:
@@ -81,26 +84,33 @@ class ComputerPlayer(Player):
 
         # If card has a useful effect, use it
         if card.effect:
+            print(f"  {self.name} uses the card's effect: {card.effect}.")
             return "EFFECT"
 
         # If card is low, keep it (replacing highest known card)
         if avg_known is not None and card.value < avg_known:
+            print(f"  {self.name} keeps the drawn card.")
             return "KEEP"
 
         # If card value is low enough in absolute terms, keep it
         if card.value <= 3:
+            print(f"  {self.name} keeps the drawn card.")
             return "KEEP"
 
+        print(f"  {self.name} discards the drawn card.")
         return "DISCARD"
 
     def pick_hand_cards_for_exchange(self, drawn_card: Card) -> List[Card]:
         """Replace the highest known-value card, or a random card if none known."""
         highest_idx = self._highest_known_card_index()
         if highest_idx is not None:
+            print(f"  {self.name} replaces card at position {highest_idx} in hand.")
             return [self.hand[highest_idx]]
 
         # No known cards - pick a random one
-        return [random.choice(self.hand)]
+        chosen = random.choice(self.hand)
+        print(f"  {self.name} replaces a card in hand.")
+        return [chosen]
 
     def pick_position_for_new_card(self, available_positions: List[int]) -> Optional[int]:
         if not available_positions:
@@ -138,6 +148,7 @@ class ComputerPlayer(Player):
         else:
             idx = random.randrange(len(opponent.hand))
             card = opponent.hand[idx]
+        print(f"  {self.name} spies on {opponent.name}'s card at position {idx}.")
         return opponent, card
 
     def specify_swap(self, _round: Round) -> Tuple[Type[P], int, int]:
@@ -149,6 +160,7 @@ class ComputerPlayer(Player):
         opponents = [p for p in _round.players if p != self]
         opponent = random.choice(opponents)
         opp_idx = random.randrange(len(opponent.hand))
+        print(f"  {self.name} swaps own card (pos {own_idx}) with {opponent.name}'s card (pos {opp_idx}).")
         return opponent, own_idx, opp_idx
 
     def report_known_cards_on_hand(self) -> None:

@@ -4,7 +4,8 @@ Main script to run the Kabo card game.
 Usage:
     python main.py                           # Hot-seat mode, 2 human players
     python main.py --players Petr Anicka Jan # 3 human players
-    python main.py --ai 1                   # 1 human + 1 AI
+    python main.py --ai 1                   # 2 human + 1 AI (3 total)
+    python main.py --players Petr --ai 1    # 1 human + 1 AI (2 total)
     python main.py --mode server --num-players 2  # Start server
     python main.py --mode client --name Petr      # Join as client
 """
@@ -17,9 +18,9 @@ def main():
     parser.add_argument("--mode", choices=["hotseat", "server", "client"],
                         default="hotseat", help="Game mode")
     parser.add_argument("--players", nargs="+", default=["Petr", "Anicka"],
-                        help="Player names (hot-seat mode)")
+                        help="Names of HUMAN players (e.g. --players Alice Bob)")
     parser.add_argument("--ai", type=int, default=0,
-                        help="Number of AI players to add")
+                        help="Number of AI players to ADD (on top of human players)")
     parser.add_argument("--name", type=str, default="Player",
                         help="Your name (client mode)")
     parser.add_argument("--num-players", type=int, default=2,
@@ -35,6 +36,20 @@ def main():
         player_config = {name: "HUMAN" for name in args.players}
         for i in range(args.ai):
             player_config[f"AI_{i + 1}"] = "COMPUTER"
+
+        total = len(player_config)
+        human_count = len(args.players)
+        ai_count = args.ai
+        print("=" * 50)
+        print("KABO - Game Setup")
+        print("=" * 50)
+        print(f"  Human players ({human_count}): {', '.join(args.players)}")
+        if ai_count:
+            ai_names = [f"AI_{i + 1}" for i in range(ai_count)]
+            print(f"  AI players    ({ai_count}): {', '.join(ai_names)}")
+        print(f"  Total players: {total}")
+        print("=" * 50)
+
         game = Game(player_config)
         game.play_game()
 

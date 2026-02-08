@@ -96,6 +96,9 @@ class Round:
         :return:
         """
         for player in self.players:
+            if player.character != "COMPUTER":
+                input(f"\n>>> {player.name}, press Enter to peek at your cards...")
+                os.system('cls' if os.name == 'nt' else 'clear')
             _which_cards = player.card_checking_preference()
             player.check_own_cards(
                 num_cards=NUMBER_OF_CARDS_TO_SEE, which_position=_which_cards
@@ -120,12 +123,20 @@ class Round:
 
             current_player: "Player" = next(_players_cycle)
 
-            # Clear screen between turns for hot-seat privacy
-            os.system('cls' if os.name == 'nt' else 'clear')
-            print(f"--- {current_player.name}'s turn ---")
-            current_player.report_known_cards_on_hand()
+            if current_player.character == "COMPUTER":
+                # AI turn: print actions visibly, no screen clear
+                print(f"\n--- {current_player.name}'s turn (AI) ---")
+            else:
+                # Human turn: pause so player can read AI actions, then clear
+                input(f"\n>>> {current_player.name}, press Enter to start your turn...")
+                os.system('cls' if os.name == 'nt' else 'clear')
+                print(f"--- {current_player.name}'s turn ---")
+                current_player.report_known_cards_on_hand()
 
             kabo_called = current_player.perform_turn(_round=self)
+
+            if current_player.character == "COMPUTER" and self.discard_pile:
+                print(f"  Top of discard pile is now: {self.discard_pile[-1].value}")
 
             if kabo_called:
                 self.kabo_called = True

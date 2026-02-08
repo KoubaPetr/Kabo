@@ -231,6 +231,7 @@ class Player:
         if _round.kabo_called:
             raise ValueError("Kabo cannot be called twice in the same round!")
 
+        print(f"  {self.name} called KABO! Everyone gets one more turn.")
         self.called_kabo = True
 
     def hit_deck(self, _round: Round) -> None:
