@@ -258,25 +258,43 @@ class WebPlayer(Player):
         return opponent, response["own_card_idx"], response["opp_card_idx"]
 
     def report_known_cards_on_hand(self) -> None:
-        """Send known cards info to UI via event bus."""
+        """Show known cards to the web player and wait for confirmation."""
+        known_cards = []
         hand_display = []
-        for c in self.hand:
+        for i, c in enumerate(self.hand):
             if c.known_to_owner or c.publicly_visible:
                 hand_display.append(str(c.value))
+                known_cards.append({"position": i, "value": c.value})
             else:
                 hand_display.append("?")
         if self.event_bus:
             self.event_bus.emit("log", f"{self.name}'s hand: [{', '.join(hand_display)}]")
 
+        state = self._build_state_snapshot(self._current_round)
+        state.input_request = InputRequest(
+            request_type="initial_peek_reveal",
+            prompt=f"Your cards: [{', '.join(hand_display)}]. Memorize them!",
+            options=["OK"],
+            extra={"known_cards": known_cards, "hand_display": hand_display},
+        )
+        self._emit_input_request(state)
+        self._wait_for_response()
+
     def tell_player_card_value(self, card: Card, effect: str) -> None:
-        """Show the peeked/spied card value to the web player."""
+        """Show the peeked/spied card value and wait for player confirmation."""
         if effect == "PEAK":
             msg = f"You peeked at your card: value is {card.value}"
         else:
             msg = f"You spied on a card: value is {card.value}"
         if self.event_bus:
             self.event_bus.emit("log", msg)
-            self.event_bus.emit("card_revealed", {
-                "effect": effect,
-                "value": card.value,
-            })
+
+        state = self._build_state_snapshot(self._current_round)
+        state.input_request = InputRequest(
+            request_type="card_reveal",
+            prompt=msg,
+            options=["OK"],
+            extra={"value": card.value, "effect": effect},
+        )
+        self._emit_input_request(state)
+        self._wait_for_response()

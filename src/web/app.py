@@ -93,14 +93,8 @@ class WebApp:
             self.game_table.show_game_over(self._last_state)
 
     def _on_card_revealed(self, data) -> None:
-        if data and self.game_table:
-            effect = data.get("effect", "")
-            value = data.get("value", "?")
-            if effect == "PEAK":
-                msg = f"You peeked: card value is {value}"
-            else:
-                msg = f"You spied: card value is {value}"
-            ui.notify(msg, type="positive", position="top", timeout=3000)
+        """Legacy handler - card reveals are now shown via action panel confirmation."""
+        pass
 
 
 def start_web_gui() -> None:

@@ -246,6 +246,45 @@ class ActionPanel:
             "opp_card_idx": opp_idx,
         })
 
+    def _render_card_reveal(self, request: InputRequest) -> None:
+        """Render a card reveal (peek/spy) with prominent display and confirmation."""
+        value = request.extra.get("value", "?")
+        effect = request.extra.get("effect", "")
+
+        if effect == "PEAK":
+            title = "You peeked at your card!"
+        else:
+            title = "You spied on an opponent's card!"
+
+        ui.label(title).classes("text-yellow-300 text-lg font-bold")
+        with ui.row().classes("items-center justify-center gap-4 my-2"):
+            from src.web.components.card_component import CardView as CV, render_card
+            render_card(CV(position=0, value=value, is_known=True,
+                          is_publicly_visible=False), size="normal")
+        ui.label(f"Card value: {value}").classes("text-white text-xl font-bold text-center")
+        ui.button("Got it!", on_click=lambda: self._submit("OK")).props(
+            "color=positive size=lg"
+        ).classes("mt-2")
+
+    def _render_initial_peek_reveal(self, request: InputRequest) -> None:
+        """Render the initial card peek with card values and confirmation."""
+        known_cards = request.extra.get("known_cards", [])
+
+        ui.label("Memorize your cards!").classes("text-yellow-300 text-lg font-bold")
+        with ui.row().classes("items-center justify-center gap-4 my-2"):
+            from src.web.components.card_component import CardView as CV, render_card
+            for card_info in known_cards:
+                render_card(CV(
+                    position=card_info["position"],
+                    value=card_info["value"],
+                    is_known=True,
+                    is_publicly_visible=False,
+                ), size="normal", label=f"#{card_info['position']}")
+
+        ui.button("Got it!", on_click=lambda: self._submit("OK")).props(
+            "color=positive size=lg"
+        ).classes("mt-2")
+
     def _render_generic_options(self, request: InputRequest) -> None:
         """Fallback: render simple buttons for each option."""
         with ui.row().classes("gap-2 flex-wrap"):
