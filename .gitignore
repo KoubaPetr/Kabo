@@ -1,3 +1,16 @@
 list_of_good_practices.txt
 test.py
 testing/pygame_gui_experiments.py
+
+# Python
+__pycache__/
+*.pyc
+
+# NiceGUI
+.nicegui/
+
+# Environment
+.env
+
+# Stray pip output
+=1.4

@@ -367,5 +367,5 @@ def start_web_gui() -> None:
         host=host,
         port=port,
         reload=False,
-        storage_secret="kabo-secret-key-change-in-production",
+        storage_secret=os.environ.get("STORAGE_SECRET", "kabo-default-dev-secret"),
     )
