@@ -5,7 +5,7 @@ from itertools import count
 from typing import List, Optional, Callable, Type, Tuple, Dict, TYPE_CHECKING
 from src.card import Card
 from src.round import Round
-from src.rules import ALLOWED_PLAYS, KABO_MALUS, POINT_VALUE_AFTER_HITTING_TARGET
+from config.rules import ALLOWED_PLAYS, KABO_MALUS, POINT_VALUE_AFTER_HITTING_TARGET
 
 if TYPE_CHECKING:
     from src.human_player import P
@@ -21,6 +21,10 @@ class Player:
     """
 
     _id_incremental: count = count(0)
+
+    @classmethod
+    def reset_id_counter(cls):
+        cls._id_incremental = count(0)
 
     ### Function from the child classes
     pick_turn_type: Callable  # implemented in child class
@@ -46,11 +50,6 @@ class Player:
         self.players_game_score: int = 0
         self.player_id: int = next(self._id_incremental)
         self.called_kabo: bool = False
-
-        if character != "HUMAN":
-            raise NotImplementedError(
-                "Sofar only human players are supported, other kinds of agents will be implemented later"
-            )
 
     def __str__(self):
         """
@@ -86,10 +85,14 @@ class Player:
         print(
             f"Player {self.name}'s turn. {self.name}'s hand: {[str(c) for c in self.hand]}. Top of Discard Pile has {_round.discard_pile[-1].value}. "
         )
-        # CHECK: calling childs method, is it ok...?
-        players_play_decision: str = self.pick_turn_type()
+        players_play_decision: str = self.pick_turn_type(_round=_round)
 
         if players_play_decision == "KABO":
+            if _round.kabo_called:
+                # KABO already called by another player, re-prompt or fall back to HIT_DECK
+                print(f"{self.name} wanted KABO but it's already been called. Drawing from deck instead.")
+                self.hit_deck(_round=_round)
+                return False
             self.call_kabo(_round=_round)
             return True
         if players_play_decision == "HIT_DECK":
@@ -181,7 +184,7 @@ class Player:
                 raise TypeError(
                     f"which_hand_position should contain ints, but it contains {type(position)}"
                 )
-            if position < 0 or position > len(self.hand):
+            if position < 0 or position >= len(self.hand):
                 raise ValueError(
                     f"The desired position = {position} is out of range for hand of size {len(self.hand)}"
                 )
@@ -207,8 +210,15 @@ class Player:
         :return:
         """
         self.hand.clear()
-        self.matched_100 = False
         self.called_kabo = False
+
+    def reset_player_after_game(self) -> None:
+        """
+        Method which resets values that persist across rounds but should reset between games
+        :return:
+        """
+        self.matched_100 = False
+        self.players_game_score = 0
 
     # TURNS:
 
@@ -221,6 +231,7 @@ class Player:
         if _round.kabo_called:
             raise ValueError("Kabo cannot be called twice in the same round!")
 
+        print(f"  {self.name} called KABO! Everyone gets one more turn.")
         self.called_kabo = True
 
     def hit_deck(self, _round: Round) -> None:
@@ -229,7 +240,7 @@ class Player:
         :param _round: Round, current round
         :return:
         """
-        _drawn_card: Card = _round.main_deck.pop()
+        _drawn_card: Card = _round.main_deck.cards.pop()
         decision_on_card = self.decide_on_card_use(_drawn_card)
         match decision_on_card:
             case "KEEP":
@@ -237,11 +248,12 @@ class Player:
             case "DISCARD":
                 _round.discard_card(_drawn_card)
             case "EFFECT":
+                _round.discard_card(_drawn_card)
                 effect_to_function: Dict[str, Callable] = {
                     "KUK": self.peak,
                     "ŠPION": self.spy,
                     "KŠEFT": self.swap,
-                }  # TODO: place elsewhere?
+                }
                 effect_function: Callable = effect_to_function[_drawn_card.effect]
                 if _drawn_card.effect == "KUK":
                     effect_function()
@@ -254,9 +266,11 @@ class Player:
         :param _round: Round, current round
         :return:
         """
-        _top_discarded_card: Card = _round.discard_pile.pop()
+        _top_discarded_card: Card = _round.discard_pile.hit()
         # here we assume visible card is automatically kept
         self.keep_drawn_card(_top_discarded_card, _round)
+        # Per CABO rules: card taken from discard pile stays faceup in hand
+        _top_discarded_card.publicly_visible = True
 
     def keep_drawn_card(self, drawn_card: Card, _round: Round) -> None:
         """
@@ -266,6 +280,7 @@ class Player:
         :return:
         """
         drawn_card.status = "HAND"
+        drawn_card.publicly_visible = False
         drawn_card.known_to_owner = True
 
         _cards_to_be_discarded: List[Card] = self.pick_hand_cards_for_exchange(
@@ -277,7 +292,7 @@ class Player:
         if _discarding_corectness:
             self.perform_card_exchange(_cards_to_be_discarded, drawn_card, _round)
         else:
-            self.failed_multi_exchange(drawn_card)
+            self.failed_multi_exchange(drawn_card, _cards_to_be_discarded, _round)
 
     def perform_card_exchange(
         self, cards_selected_for_exchange: List[Card], drawn_card: Card, _round: Round
@@ -306,13 +321,28 @@ class Player:
         else:
             _round.discard_card(drawn_card)
 
-    def failed_multi_exchange(self, drawn_card: Card) -> None:
+    def failed_multi_exchange(self, drawn_card: Card, attempted_cards: List[Card], _round: Round) -> None:
         """
-        invoked when multi exchange card was attempted but inconsistent cards were selected for exchange
+        invoked when multi exchange card was attempted but inconsistent cards were selected for exchange.
+        Per official rules: attempted cards are turned face-up, and if 3+ cards were attempted,
+        a penalty card is drawn from the deck face-down.
         :param drawn_card: Card, drawn card to be added to hand
+        :param attempted_cards: List[Card], the cards the player attempted to exchange
+        :param _round: Round, current round (needed for penalty card draw)
         :return:
         """
+        # The attempted cards are turned face-up
+        for card in attempted_cards:
+            card.publicly_visible = True
+
+        # Add the drawn card to the hand
         self.hand.append(drawn_card)
+
+        # If 3+ cards were attempted and failed, draw a penalty card from the deck
+        if len(attempted_cards) >= 3 and _round.main_deck.cards:
+            penalty_card: Card = _round.main_deck.cards.pop()
+            penalty_card.status = "HAND"
+            self.hand.append(penalty_card)
 
     def peak(self) -> None:
         """

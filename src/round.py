@@ -1,12 +1,16 @@
 """
 Class Round
 """
+import os
 from itertools import count, cycle
 from typing import TYPE_CHECKING, List, Dict, Optional, Type
 import collections
-from random import shuffle
 from src.card import Card
-from src.rules import (
+from src.deck import Deck
+
+# from src.game import Game
+from src.discard_pile import DiscardPile
+from config.rules import (
     CARDS_PER_PLAYER,
     NUMBER_OF_CARDS_TO_SEE,
     NUMBER_OF_CARDS_FOR_KAMIKADZE,
@@ -28,38 +32,40 @@ class Round:
 
     _id_incremental: count = count(0)
 
-    def __init__(self, cards: List[Card], players: List["Player"]):
+    @classmethod
+    def reset_id_counter(cls):
+        cls._id_incremental = count(0)
+
+    def __init__(
+        self, cards: List[Card], players: List["Player"], game,
+        start_player_index: int = 0
+    ):  # TODO: game not typed due to circular import
         """
         Constructor method
         """
         # Init round attributes
         self.round_id: int = next(self._id_incremental)
         self.players: List[Type[Player]] = (
-            players[self.round_id :] + players[: self.round_id]
+            players[start_player_index:] + players[:start_player_index]
         )
+        self.game = game
         self.kabo_called: bool = (
             False  # indicator whether kabo was called in this round already
         )
-        self.discard_pile: List[Card] = []
-        self.main_deck: List[Card] = cards
+        self.discard_pile: DiscardPile = DiscardPile([])
+        self.main_deck: Deck = Deck(cards)
+
 
         # Reset players attributes which might have been altered in previous rounds
         self._reset_players()
 
         # Shuffle and deal the cards
-        shuffle(self.main_deck)  # shuffles the cards in place
+        self.main_deck.shuffle()  # shuffles the cards in place
         self._deal_cards_to_players()
 
         # Init the discard pile
-        _first_discarded_card: Card = self.main_deck.pop()
+        _first_discarded_card: Card = self.main_deck.cards.pop()
         self.discard_card(_first_discarded_card)
-
-        # Start actions of players
-        self._let_players_see_cards()
-        self._start_playing()
-
-        # Update players score after round
-        self._update_players_game_scores()
 
     def _deal_cards_to_players(self) -> None:
         """
@@ -68,7 +74,7 @@ class Round:
         """
         for player in self.players:
             for _ in range(CARDS_PER_PLAYER):
-                _dealt_card: Card = self.main_deck.pop()
+                _dealt_card: Card = self.main_deck.cards.pop()
                 self._deal_single_card(_dealt_card, player)
 
     def discard_card(self, card: Card) -> None:
@@ -82,7 +88,7 @@ class Round:
             True  # maybe cover the previously top card and make it again not visible?
         )
 
-        self.discard_pile.append(card)
+        self.discard_pile.add(card)
 
     def _let_players_see_cards(self) -> None:
         """
@@ -90,28 +96,47 @@ class Round:
         :return:
         """
         for player in self.players:
+            if player.character not in ("COMPUTER", "WEB"):
+                input(f"\n>>> {player.name}, press Enter to peek at your cards...")
+                os.system('cls' if os.name == 'nt' else 'clear')
             _which_cards = player.card_checking_preference()
             player.check_own_cards(
                 num_cards=NUMBER_OF_CARDS_TO_SEE, which_position=_which_cards
             )
             player.report_known_cards_on_hand()
 
-    def _start_playing(self):
+    def start_playing(self):
         """
         Method calling the Players to play until the end of Round is reached.
-
         :return:
         """
+        # Start actions of players
+        self._let_players_see_cards()
+
         _players_cycle: cycle = cycle(self.players)
         _kabo_counter: int = len(self.players)
         _kabo_active: bool = False
 
-        while self.main_deck:
+        while self.main_deck.cards:
             if _kabo_counter == 0:
                 break
 
             current_player: "Player" = next(_players_cycle)
+
+            if current_player.character in ("COMPUTER", "WEB"):
+                # AI/Web turn: print actions visibly, no screen clear
+                print(f"\n--- {current_player.name}'s turn{' (AI)' if current_player.character == 'COMPUTER' else ''} ---")
+            else:
+                # Human turn: pause so player can read AI actions, then clear
+                input(f"\n>>> {current_player.name}, press Enter to start your turn...")
+                os.system('cls' if os.name == 'nt' else 'clear')
+                print(f"--- {current_player.name}'s turn ---")
+                current_player.report_known_cards_on_hand()
+
             kabo_called = current_player.perform_turn(_round=self)
+
+            if current_player.character == "COMPUTER" and self.discard_pile:
+                print(f"  Top of discard pile is now: {self.discard_pile[-1].value}")
 
             if kabo_called:
                 self.kabo_called = True
@@ -119,6 +144,9 @@ class Round:
 
             if _kabo_active:
                 _kabo_counter -= 1
+
+        # Update players score after round
+        self._update_players_game_scores()
 
     def _reset_players(self) -> None:
         """

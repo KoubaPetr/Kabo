@@ -8,7 +8,11 @@ from typing import TYPE_CHECKING, List, Optional
 if TYPE_CHECKING:
     from src.player import Player
 
-from src.rules import CARD_EFFECTS, CARD_LEGAL_VALUES, NUM_KINDS_FOR_MULTIPLE_DISCARD
+from config.rules import (
+    CARD_EFFECTS,
+    CARD_LEGAL_VALUES,
+    NUM_KINDS_FOR_MULTIPLE_DISCARD,
+)
 
 
 class Card:
@@ -19,6 +23,10 @@ class Card:
     """
 
     _id_incremental: count = count(0)
+
+    @classmethod
+    def reset_id_counter(cls):
+        cls._id_incremental = count(0)
 
     def __init__(self, value: int):
         """
