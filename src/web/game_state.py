@@ -50,3 +50,4 @@ class GameStateSnapshot:
     scores: Dict[str, int] = field(default_factory=dict)
     kabo_called: bool = False
     kabo_caller: str = ""
+    active_turn_player_name: str = ""

@@ -3,6 +3,8 @@ WebPlayer - bridges the synchronous game thread with the async NiceGUI UI.
 
 Each decision method emits a state snapshot + input request via EventBus,
 then blocks on a queue.Queue until the UI submits the player's response.
+
+In multiplayer, also broadcasts state to other players via the GameRoom.
 """
 import queue
 from typing import List, Optional, Type, Tuple, TypeVar
@@ -17,6 +19,8 @@ from src.web.game_state import (
 
 P = TypeVar("P", bound=Player)
 
+RESPONSE_TIMEOUT = 120  # seconds before a player is considered disconnected
+
 
 class WebPlayer(Player):
     """Player subclass that gets input from a browser UI via queue-based blocking."""
@@ -26,6 +30,7 @@ class WebPlayer(Player):
         self._response_queue: queue.Queue = queue.Queue()
         self.event_bus: Optional[EventBus] = None
         self._current_round: Optional[Round] = None
+        self._room = None  # GameRoom reference for multiplayer
 
     def __hash__(self):
         return self.player_id
@@ -33,13 +38,27 @@ class WebPlayer(Player):
     def set_event_bus(self, bus: EventBus) -> None:
         self.event_bus = bus
 
+    def set_room(self, room) -> None:
+        """Set the GameRoom for multiplayer broadcasting."""
+        self._room = room
+
     def submit_response(self, response) -> None:
         """Called from the UI thread to unblock the game thread."""
         self._response_queue.put(response)
 
     def _wait_for_response(self):
-        """Block the game thread until the UI submits a response."""
-        return self._response_queue.get()
+        """Block the game thread until the UI submits a response.
+
+        In multiplayer, a timeout prevents the game thread from hanging
+        forever if a player disconnects. On timeout, returns a safe default.
+        """
+        try:
+            return self._response_queue.get(timeout=RESPONSE_TIMEOUT)
+        except queue.Empty:
+            # Player disconnected or timed out
+            if self.event_bus:
+                self.event_bus.emit("log", f"{self.name} timed out!")
+            return None
 
     def _build_state_snapshot(self, _round: Optional[Round] = None,
                               phase: str = "playing") -> GameStateSnapshot:
@@ -113,6 +132,7 @@ class WebPlayer(Player):
             kabo_called=kabo_called,
             kabo_caller=kabo_caller,
             scores={p.name: p.game_score for p in players},
+            active_turn_player_name=self.name,
         )
 
     def _can_see_card(self, card: Card, owner: Player) -> bool:
@@ -121,10 +141,19 @@ class WebPlayer(Player):
         return card.publicly_visible
 
     def _emit_input_request(self, state: GameStateSnapshot) -> None:
-        """Emit game state update with input request to UI."""
+        """Emit game state update with input request to UI.
+
+        In multiplayer, also broadcasts a 'waiting' state to other players.
+        """
         if self.event_bus:
             self.event_bus.emit("state_update", state)
             self.event_bus.emit("input_request", state.input_request)
+
+        # Broadcast to other players in the room
+        if self._room and self._current_round:
+            self._room.broadcast_state_to_others(
+                self.name, self._current_round
+            )
 
     # --- Decision methods ---
 
@@ -141,6 +170,8 @@ class WebPlayer(Player):
         )
         self._emit_input_request(state)
         response = self._wait_for_response()
+        if response is None:
+            response = "HIT_DECK"  # safe default on timeout
         print(f"  {self.name} chose: {response}")
         return response
 
@@ -158,7 +189,10 @@ class WebPlayer(Player):
             extra={"drawn_card_value": card.value, "drawn_card_effect": card.effect},
         )
         self._emit_input_request(state)
-        return self._wait_for_response()
+        response = self._wait_for_response()
+        if response is None:
+            response = "DISCARD"
+        return response
 
     def pick_hand_cards_for_exchange(self, drawn_card: Card) -> List[Card]:
         state = self._build_state_snapshot(self._current_round)
@@ -175,6 +209,8 @@ class WebPlayer(Player):
         )
         self._emit_input_request(state)
         response = self._wait_for_response()  # list of position ints
+        if response is None:
+            response = [0]
         if isinstance(response, int):
             response = [response]
         return [self.hand[i] for i in response]
@@ -192,7 +228,10 @@ class WebPlayer(Player):
             options=[str(p) for p in available_positions],
         )
         self._emit_input_request(state)
-        return int(self._wait_for_response())
+        response = self._wait_for_response()
+        if response is None:
+            return available_positions[0]
+        return int(response)
 
     def pick_cards_to_see(self, num_cards_to_see: int) -> List[int]:
         state = self._build_state_snapshot(self._current_round, phase="peek")
@@ -204,6 +243,8 @@ class WebPlayer(Player):
         )
         self._emit_input_request(state)
         response = self._wait_for_response()  # list of ints
+        if response is None:
+            return list(range(num_cards_to_see))
         if isinstance(response, int):
             response = [response]
         return response
@@ -225,6 +266,9 @@ class WebPlayer(Player):
         )
         self._emit_input_request(state)
         response = self._wait_for_response()  # {"opponent": name, "card_idx": int}
+        if response is None:
+            opp = opponents[0]
+            return opp, opp.hand[0]
         opponent = _round.get_player_by_name(response["opponent"])
         card = opponent.hand[response["card_idx"]]
         print(f"  {self.name} spies on {opponent.name}'s card at position {response['card_idx']}.")
@@ -251,6 +295,9 @@ class WebPlayer(Player):
         )
         self._emit_input_request(state)
         response = self._wait_for_response()
+        if response is None:
+            opp = opponents[0]
+            return opp, 0, 0
         # {"own_card_idx": int, "opponent": name, "opp_card_idx": int}
         opponent = _round.get_player_by_name(response["opponent"])
         print(f"  {self.name} swaps own card (pos {response['own_card_idx']}) "

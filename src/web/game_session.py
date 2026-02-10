@@ -3,6 +3,8 @@ GameSession - manages a game running in a background thread.
 
 Creates players, runs Game.play_game() in a daemon thread, and captures
 print output via PrintInterceptor so it appears in the browser log.
+
+Supports both single-player (solo vs AI) and multiplayer (room-based) modes.
 """
 import io
 import sys
@@ -18,15 +20,19 @@ from src.computer_player import ComputerPlayer
 
 class PrintInterceptor(io.TextIOBase):
     """Captures writes to stdout and forwards them to both the original
-    stdout and the EventBus as log events."""
+    stdout and one or more EventBuses as log events."""
 
-    def __init__(self, original_stdout, event_bus: EventBus):
+    def __init__(self, original_stdout, event_buses: List[EventBus]):
         self._original = original_stdout
-        self._event_bus = event_bus
+        self._event_buses = event_buses
 
     def write(self, text: str) -> int:
         if text and text.strip():
-            self._event_bus.emit("log", text.strip())
+            for bus in self._event_buses:
+                try:
+                    bus.emit("log", text.strip())
+                except Exception:
+                    pass
         self._original.write(text)
         return len(text)
 
@@ -48,6 +54,8 @@ class GameSession:
         self.game: Optional[Game] = None
         self._thread: Optional[threading.Thread] = None
         self._finished = False
+        self._all_event_buses: List[EventBus] = [event_bus]
+        self._room = None
 
     def start(self) -> WebPlayer:
         """Create players and start the game in a background thread."""
@@ -76,20 +84,81 @@ class GameSession:
 
         return self.web_player
 
+    @classmethod
+    def from_room(cls, room) -> "GameSession":
+        """Create a GameSession for a multiplayer room.
+
+        Creates WebPlayers for each human player and ComputerPlayers for AI,
+        then starts the game thread.
+        """
+        session = cls.__new__(cls)
+        session.event_bus = None
+        session.player_name = None
+        session.ai_count = room.ai_count
+        session.web_player = None
+        session.game = None
+        session._thread = None
+        session._finished = False
+        session._room = room
+
+        players = []
+        all_event_buses = []
+
+        # Create WebPlayers for each human in the room
+        for name, info in room.players.items():
+            wp = WebPlayer(name)
+            wp.set_event_bus(info["event_bus"])
+            wp.set_room(room)
+            info["web_player"] = wp
+            players.append(wp)
+            all_event_buses.append(info["event_bus"])
+
+        session._all_event_buses = all_event_buses
+
+        # Create AI players
+        for i in range(room.ai_count):
+            players.append(ComputerPlayer(f"AI_{i + 1}"))
+
+        # Reset counters for fresh game
+        Card.reset_id_counter()
+        from src.player import Player
+        Player.reset_id_counter()
+        from src.round import Round
+        Round.reset_id_counter()
+
+        # Create game with pre-built players
+        session.game = Game(players=players)
+
+        # Start game in a daemon thread
+        session._thread = threading.Thread(
+            target=session._run_game, daemon=True
+        )
+        session._thread.start()
+
+        return session
+
     def _run_game(self) -> None:
         """Run the game loop, capturing stdout."""
         original_stdout = sys.stdout
-        interceptor = PrintInterceptor(original_stdout, self.event_bus)
+        interceptor = PrintInterceptor(original_stdout, self._all_event_buses)
         sys.stdout = interceptor
         try:
             self.game.play_game()
         except Exception as e:
-            self.event_bus.emit("log", f"Game error: {e}")
-            self.event_bus.emit("game_error", str(e))
+            for bus in self._all_event_buses:
+                try:
+                    bus.emit("log", f"Game error: {e}")
+                    bus.emit("game_error", str(e))
+                except Exception:
+                    pass
         finally:
             sys.stdout = original_stdout
             self._finished = True
-            self.event_bus.emit("game_over", None)
+            if self._room:
+                self._room.state = "finished"
+                self._room.broadcast_game_over(None)
+            else:
+                self.event_bus.emit("game_over", None)
 
     @property
     def is_finished(self) -> bool:

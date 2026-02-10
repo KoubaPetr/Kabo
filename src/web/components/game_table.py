@@ -8,7 +8,7 @@ Layout:
   - Below: Action panel
   - Footer: Game log + Scoreboard
 """
-from nicegui import ui
+from nicegui import ui, app
 from typing import Optional
 
 from src.web.game_state import GameStateSnapshot, PlayerView, CardView
@@ -96,8 +96,15 @@ class GameTable:
                     f"KABO called by {state.kabo_caller}! Final turns..."
                 )
                 self._status_label.classes(replace="text-lg font-bold text-red-400")
+            elif (state.active_turn_player_name
+                  and state.active_turn_player_name != state.current_player_name):
+                # Multiplayer: another player's turn
+                self._status_label.set_text(
+                    f"Waiting for {state.active_turn_player_name}..."
+                )
+                self._status_label.classes(replace="text-lg font-bold text-gray-400")
             else:
-                self._status_label.set_text(f"{state.current_player_name}'s turn")
+                self._status_label.set_text("Your turn!")
                 self._status_label.classes(replace="text-lg font-bold text-yellow-300")
 
         if self._round_label:
@@ -170,6 +177,11 @@ class GameTable:
                     ui.label(f"{prefix} {p.name}: {p.game_score} points").classes(
                         "text-lg text-white"
                     )
-                ui.button("Play Again", on_click=lambda: ui.navigate.to("/")).props(
+                def play_again():
+                    app.storage.user.pop("room_code", None)
+                    app.storage.user.pop("player_name", None)
+                    ui.navigate.to("/")
+
+                ui.button("Play Again", on_click=play_again).props(
                     "color=positive size=lg"
                 ).classes("mt-4")

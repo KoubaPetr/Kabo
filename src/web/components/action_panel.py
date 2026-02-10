@@ -43,6 +43,12 @@ class ActionPanel:
         """Render appropriate controls for the given input request."""
         if not self._container:
             return
+
+        # Route "waiting" requests to the waiting display
+        if request.request_type == "waiting":
+            self.show_waiting(request.prompt)
+            return
+
         self._current_request = request
         if reset_selection:
             self._selected_cards = []
