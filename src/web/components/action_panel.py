@@ -39,12 +39,13 @@ class ActionPanel:
                 ui.spinner(size="sm")
                 ui.label(message).classes("text-gray-400")
 
-    def show_request(self, request: InputRequest) -> None:
+    def show_request(self, request: InputRequest, reset_selection: bool = True) -> None:
         """Render appropriate controls for the given input request."""
         if not self._container:
             return
         self._current_request = request
-        self._selected_cards = []
+        if reset_selection:
+            self._selected_cards = []
         self._container.clear()
 
         with self._container:
@@ -259,9 +260,9 @@ class ActionPanel:
             self._selected_cards.remove(pos)
         else:
             self._selected_cards.append(pos)
-        # Re-render the exchange panel
+        # Re-render the exchange panel (preserve current selection)
         if self._current_request:
-            self.show_request(self._current_request)
+            self.show_request(self._current_request, reset_selection=False)
             # Restore selection state visually
             # (handled by checking self._selected_cards in _render_pick_hand_cards_for_exchange)
 
