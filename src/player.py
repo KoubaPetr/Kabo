@@ -269,6 +269,8 @@ class Player:
         _top_discarded_card: Card = _round.discard_pile.hit()
         # here we assume visible card is automatically kept
         self.keep_drawn_card(_top_discarded_card, _round)
+        # Per CABO rules: card taken from discard pile stays faceup in hand
+        _top_discarded_card.publicly_visible = True
 
     def keep_drawn_card(self, drawn_card: Card, _round: Round) -> None:
         """

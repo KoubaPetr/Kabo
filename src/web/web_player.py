@@ -82,7 +82,7 @@ class WebPlayer(Player):
             for i, card in enumerate(self.hand):
                 if card is None:
                     continue
-                visible = card.known_to_owner or card.publicly_visible
+                visible = card.publicly_visible
                 cards.append(CardView(
                     position=i,
                     value=card.value if visible else None,
@@ -116,14 +116,9 @@ class WebPlayer(Player):
         )
 
     def _can_see_card(self, card: Card, owner: Player) -> bool:
-        """Determine if this WebPlayer can see the given card's value."""
-        if card.publicly_visible:
-            return True
-        if owner == self and card.known_to_owner:
-            return True
-        if self in card.known_to_other_players:
-            return True
-        return False
+        """Only faceup (publicly_visible) cards are shown in the hand display.
+        All other card values are hidden to preserve the memory challenge."""
+        return card.publicly_visible
 
     def _emit_input_request(self, state: GameStateSnapshot) -> None:
         """Emit game state update with input request to UI."""
@@ -169,7 +164,7 @@ class WebPlayer(Player):
         state = self._build_state_snapshot(self._current_round)
         hand_info = []
         for i, c in enumerate(self.hand):
-            visible = c.known_to_owner or c.publicly_visible
+            visible = c.publicly_visible
             hand_info.append({"pos": i, "value": c.value if visible else None})
 
         state.input_request = InputRequest(
@@ -245,7 +240,7 @@ class WebPlayer(Player):
             })
         hand_info = []
         for i, c in enumerate(self.hand):
-            visible = c.known_to_owner or c.publicly_visible
+            visible = c.publicly_visible
             hand_info.append({"pos": i, "value": c.value if visible else None})
 
         state = self._build_state_snapshot(_round)
