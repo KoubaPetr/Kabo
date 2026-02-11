@@ -5,6 +5,9 @@ Shows connected players, room code, and start button for the host.
 from nicegui import ui
 from typing import Callable, Optional
 
+# Track auto-start per room to prevent multiple triggers
+_auto_started_rooms: set = set()
+
 
 def render_room_waiting_page(room_code: str, player_name: str,
                              is_host: bool,
@@ -128,6 +131,14 @@ def render_room_waiting_page(room_code: str, player_name: str,
                 start_btn.enable()
             else:
                 start_btn.disable()
+
+        # Auto-start when all human slots are filled
+        if (is_host
+                and len(player_names) >= max_p
+                and room_code not in _auto_started_rooms):
+            _auto_started_rooms.add(room_code)
+            status_label.set_text("All players joined! Starting in 2s...")
+            ui.timer(2.0, on_start, once=True)
 
     # Poll every second
     ui.timer(1.0, refresh)

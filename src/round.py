@@ -93,21 +93,39 @@ class Round:
     def _let_players_see_cards(self) -> None:
         """
         Method calling all players in the round to see certain number of their cards.
+        WEB players peek in parallel (each has their own queue/bus, no shared state).
         :return:
         """
+        import threading
+
         # Notify all players of round start so they see the table immediately
         for player in self.players:
             player.notify_round_start(self)
 
-        for player in self.players:
-            if player.character not in ("COMPUTER", "WEB"):
-                input(f"\n>>> {player.name}, press Enter to peek at your cards...")
-                os.system('cls' if os.name == 'nt' else 'clear')
+        def _player_peek(player):
             _which_cards = player.card_checking_preference()
             player.check_own_cards(
                 num_cards=NUMBER_OF_CARDS_TO_SEE, which_position=_which_cards
             )
             player.report_known_cards_on_hand()
+
+        # Launch WEB players in parallel, process others sequentially
+        web_threads = []
+        for player in self.players:
+            if player.character == "WEB":
+                t = threading.Thread(target=_player_peek, args=(player,))
+                t.start()
+                web_threads.append(t)
+            elif player.character == "COMPUTER":
+                _player_peek(player)
+            else:
+                input(f"\n>>> {player.name}, press Enter to peek at your cards...")
+                os.system('cls' if os.name == 'nt' else 'clear')
+                _player_peek(player)
+
+        # Wait for all web players to finish peeking
+        for t in web_threads:
+            t.join()
 
     def start_playing(self):
         """

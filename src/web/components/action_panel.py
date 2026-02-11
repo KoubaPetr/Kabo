@@ -21,6 +21,7 @@ class ActionPanel:
         self._current_request: Optional[InputRequest] = None
         self._selected_cards: List[int] = []
         self._game_table = None  # Set by GameTable.build()
+        self._pending_exchange_position: Optional[int] = None  # Cached from decide_on_card_use click
 
     def build(self) -> None:
         """Create the action panel container."""
@@ -65,30 +66,18 @@ class ActionPanel:
                 self._render_generic_options(request)
 
     def _render_pick_turn_type(self, request: InputRequest) -> None:
-        """Render turn type selection buttons."""
+        """Render turn type selection — deck/discard clicks handled by game table."""
         ui.label(
             "Click the deck to draw, or the discard pile to take"
         ).classes("text-xs text-gray-400 mb-1 italic")
         with ui.row().classes("gap-2 flex-wrap"):
-            for option in request.options:
-                label_map = {
-                    "HIT_DECK": "Draw from Deck",
-                    "HIT_DISCARD_PILE": "Take from Discard",
-                    "KABO": "Call KABO!",
-                }
-                label = label_map.get(option, option)
-                color_map = {
-                    "HIT_DECK": "primary",
-                    "HIT_DISCARD_PILE": "secondary",
-                    "KABO": "negative",
-                }
-                color = color_map.get(option, "primary")
-                ui.button(label, on_click=lambda e, o=option: self._submit(o)).props(
-                    f"color={color}"
-                ).classes("text-sm")
+            if "KABO" in request.options:
+                ui.button(
+                    "Call KABO!", on_click=lambda: self._submit("KABO")
+                ).props("color=negative").classes("text-sm")
 
     def _render_decide_on_card_use(self, request: InputRequest) -> None:
-        """Render keep/discard/effect buttons for a drawn card."""
+        """Render discard/effect buttons + click-hand-to-keep for a drawn card."""
         drawn_val = request.extra.get("drawn_card_value", "?")
         drawn_eff = request.extra.get("drawn_card_effect")
 
@@ -98,10 +87,11 @@ class ActionPanel:
             render_card(CV(position=0, value=drawn_val, is_known=True,
                           is_publicly_visible=False), size="normal")
 
+        ui.label(
+            "Click a card in your hand to replace it with this card"
+        ).classes("text-xs text-gray-400 mb-1 italic")
+
         with ui.row().classes("gap-2 mt-2"):
-            ui.button("Keep", on_click=lambda: self._submit("KEEP")).props(
-                "color=positive"
-            )
             ui.button("Discard", on_click=lambda: self._submit("DISCARD")).props(
                 "color=negative"
             )
@@ -113,12 +103,22 @@ class ActionPanel:
                 ).props("color=warning")
 
     def _render_pick_hand_cards_for_exchange(self, request: InputRequest) -> None:
-        """Render card selection for exchange — click cards in hand on the table."""
+        """Render card selection for exchange — click a card to auto-exchange."""
         drawn_val = request.extra.get("drawn_card_value", "?")
+
+        # Auto-submit if a pending position was cached from decide_on_card_use
+        if self._pending_exchange_position is not None:
+            pos = self._pending_exchange_position
+            self._pending_exchange_position = None
+            ui.label(f"Exchanging card #{pos}...").classes(
+                "text-yellow-300 text-sm"
+            )
+            ui.timer(0.4, lambda: self._submit([pos]), once=True)
+            return
 
         ui.label(f"New card value: {drawn_val}").classes("text-yellow-300 text-sm mb-1")
         ui.label(
-            "Click cards in your hand to select them for exchange"
+            "Click card(s) in your hand to select them for exchange"
         ).classes("text-xs text-gray-400 mb-1 italic")
 
         if self._selected_cards:
@@ -311,5 +311,7 @@ class ActionPanel:
         self._selected_cards = []
         if self._game_table:
             self._game_table._clickable_mode = None
+        # Don't clear pending exchange position here — it's consumed by
+        # _render_pick_hand_cards_for_exchange on the next request
         self.show_waiting("Processing...")
         self._on_submit(response)
