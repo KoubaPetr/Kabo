@@ -321,6 +321,10 @@ class Player:
         else:
             _round.discard_card(drawn_card)
 
+        exchanged_values = [c.value for c in cards_selected_for_exchange]
+        print(f"  {self.name} exchanged {len(cards_selected_for_exchange)} card(s) "
+              f"(values: {exchanged_values}) for card {drawn_card.value}.")
+
     def failed_multi_exchange(self, drawn_card: Card, attempted_cards: List[Card], _round: Round) -> None:
         """
         invoked when multi exchange card was attempted but inconsistent cards were selected for exchange.
@@ -331,18 +335,31 @@ class Player:
         :param _round: Round, current round (needed for penalty card draw)
         :return:
         """
+        attempted_values = [c.value for c in attempted_cards]
+        print(f"  Exchange FAILED! {self.name} attempted {len(attempted_cards)} cards "
+              f"(values: {attempted_values}) but they don't match.")
+
+        # Compute positions of attempted cards before modifying the hand
+        attempted_positions = [self.hand.index(c) for c in attempted_cards]
+
         # The attempted cards are turned face-up
         for card in attempted_cards:
             card.publicly_visible = True
 
-        # Add the drawn card to the hand
-        self.hand.append(drawn_card)
+        # Insert drawn card at the position closest to the attempted cards
+        insert_pos = min(attempted_positions)
+        self.hand.insert(insert_pos, drawn_card)
+        print(f"  Drawn card ({drawn_card.value}) added to {self.name}'s hand at position {insert_pos}.")
 
         # If 3+ cards were attempted and failed, draw a penalty card from the deck
         if len(attempted_cards) >= 3 and _round.main_deck.cards:
             penalty_card: Card = _round.main_deck.cards.pop()
             penalty_card.status = "HAND"
-            self.hand.append(penalty_card)
+            # Insert penalty card at the other end of the attempted range
+            penalty_pos = max(attempted_positions) + 2  # +2 because drawn_card was inserted before
+            penalty_pos = min(penalty_pos, len(self.hand))
+            self.hand.insert(penalty_pos, penalty_card)
+            print(f"  Penalty card drawn and added to {self.name}'s hand at position {penalty_pos}.")
 
     def peak(self) -> None:
         """

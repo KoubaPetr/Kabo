@@ -155,6 +155,20 @@ class WebPlayer(Player):
                 self.name, self._current_round
             )
 
+    # --- Overrides for state emission ---
+
+    def keep_drawn_card(self, drawn_card: Card, _round: Round) -> None:
+        """Override to emit updated state after exchange completes."""
+        super().keep_drawn_card(drawn_card, _round)
+        # Emit updated state so UI reflects changes (extra cards, face-up cards)
+        if self._room:
+            self._room.broadcast_state_to_others(self.name, _round)
+        state = self._build_state_snapshot(_round)
+        state.input_request = InputRequest(
+            request_type="waiting", prompt="Exchange complete.", options=[])
+        if self.event_bus:
+            self.event_bus.emit("state_update", state)
+
     # --- Decision methods ---
 
     def pick_turn_type(self, _round: Round = None) -> str:
