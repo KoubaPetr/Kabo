@@ -14,7 +14,7 @@ from src.card import Card
 from src.round import Round
 from src.web.event_bus import EventBus
 from src.web.game_state import (
-    GameStateSnapshot, PlayerView, CardView, InputRequest,
+    GameStateSnapshot, PlayerView, CardView, InputRequest, RoundSummary,
 )
 
 P = TypeVar("P", bound=Player)
@@ -367,3 +367,34 @@ class WebPlayer(Player):
         )
         self._emit_input_request(state)
         self._wait_for_response()
+
+    def wait_for_round_end_confirmation(self, round_summary: RoundSummary,
+                                        _round: Round) -> None:
+        """Show round-end summary and wait for player to confirm continuation."""
+        # Build state with all cards revealed
+        state = self._build_state_snapshot(_round, phase="round_over")
+        # Replace player views with fully revealed versions
+        state.players = round_summary.player_hands
+        # Mark the current player in the revealed views
+        for pv in state.players:
+            pv.is_current_player = (pv.name == self.name)
+        state.round_summary = round_summary
+        state.input_request = InputRequest(
+            request_type="round_end_confirm",
+            prompt="Round complete! Review scores and continue.",
+            options=["OK"],
+            extra={
+                "round_scores": round_summary.round_scores,
+                "game_scores": round_summary.game_scores,
+                "kabo_caller": round_summary.kabo_caller,
+                "kabo_successful": round_summary.kabo_successful,
+            },
+        )
+        if self.event_bus:
+            self.event_bus.emit("state_update", state)
+            self.event_bus.emit("input_request", state.input_request)
+        # Block with timeout - auto-continue if player doesn't confirm
+        try:
+            self._response_queue.get(timeout=30)
+        except queue.Empty:
+            pass

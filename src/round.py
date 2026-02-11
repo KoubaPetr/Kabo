@@ -145,6 +145,11 @@ class Round:
             if _kabo_active:
                 _kabo_counter -= 1
 
+        # Compute per-player round scores (before updating game totals)
+        self.round_scores: Dict[str, int] = {}
+        for player in self.players:
+            self.round_scores[player.name] = player.get_players_score_in_round(self)
+
         # Update players score after round
         self._update_players_game_scores()
 

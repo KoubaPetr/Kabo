@@ -38,6 +38,17 @@ class InputRequest:
 
 
 @dataclass
+class RoundSummary:
+    """Summary of a completed round for the end-of-round screen."""
+    round_number: int
+    player_hands: List[PlayerView]  # all cards revealed
+    round_scores: Dict[str, int]  # player_name -> round score
+    game_scores: Dict[str, int]  # player_name -> updated total
+    kabo_caller: str = ""
+    kabo_successful: bool = False
+
+
+@dataclass
 class GameStateSnapshot:
     """Complete snapshot of the game state as seen by a specific player."""
     phase: str  # "setup", "peek", "playing", "round_over", "game_over"
@@ -51,3 +62,4 @@ class GameStateSnapshot:
     kabo_called: bool = False
     kabo_caller: str = ""
     active_turn_player_name: str = ""
+    round_summary: Optional[RoundSummary] = None

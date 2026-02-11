@@ -11,7 +11,7 @@ Layout:
 from nicegui import ui, app
 from typing import Optional
 
-from src.web.game_state import GameStateSnapshot, PlayerView, CardView
+from src.web.game_state import GameStateSnapshot, PlayerView, CardView, RoundSummary
 from src.web.components.card_component import render_card, render_deck, render_discard_pile
 from src.web.components.game_log import GameLog
 from src.web.components.scoreboard import Scoreboard
@@ -89,6 +89,11 @@ class GameTable:
         if not self._main_container:
             return
 
+        # Handle round_over phase with summary display
+        if state.phase == "round_over" and state.round_summary:
+            self._show_round_summary(state)
+            return
+
         # Update status
         if self._status_label:
             if state.kabo_called:
@@ -158,6 +163,62 @@ class GameTable:
             with ui.row().classes("gap-1"):
                 for card in opponent.cards:
                     render_card(card, size="small")
+
+    def _show_round_summary(self, state: GameStateSnapshot) -> None:
+        """Display round-end summary with all cards revealed and scores."""
+        summary = state.round_summary
+
+        if self._status_label:
+            self._status_label.set_text(f"Round {summary.round_number + 1} Complete!")
+            self._status_label.classes(replace="text-xl font-bold text-green-400")
+
+        if self._round_label:
+            if summary.kabo_caller:
+                result = "Successful!" if summary.kabo_successful else "Failed!"
+                self._round_label.set_text(
+                    f"KABO by {summary.kabo_caller}: {result}"
+                )
+            else:
+                self._round_label.set_text("Deck depleted")
+
+        # Show all players' revealed hands (opponents section)
+        if self._opponents_container:
+            self._opponents_container.clear()
+            with self._opponents_container:
+                for pv in state.players:
+                    if not pv.is_current_player:
+                        self._render_opponent_hand(pv)
+
+        # Show center area with round scores
+        if self._center_container:
+            self._center_container.clear()
+            with self._center_container:
+                with ui.card().classes("p-4"):
+                    ui.label("Round Scores").classes(
+                        "text-lg font-bold text-yellow-300 mb-2"
+                    )
+                    for name, score in sorted(
+                        summary.round_scores.items(), key=lambda x: x[1]
+                    ):
+                        game_total = summary.game_scores.get(name, 0)
+                        with ui.row().classes("items-center gap-2 w-full"):
+                            ui.label(name).classes("text-white font-bold w-24")
+                            ui.label(f"+{score}").classes("text-yellow-300")
+                            ui.label(f"(Total: {game_total})").classes(
+                                "text-gray-400 text-sm"
+                            )
+
+        # Show the current player's revealed hand
+        if self._player_hand_container:
+            self._player_hand_container.clear()
+            with self._player_hand_container:
+                web_pv = next((p for p in state.players if p.is_current_player), None)
+                if web_pv:
+                    for card in web_pv.cards:
+                        render_card(card, size="normal", label=f"#{card.position}")
+
+        # Update scoreboard
+        self.scoreboard.update(state.players)
 
     def show_game_over(self, state: GameStateSnapshot) -> None:
         """Show game over screen."""

@@ -291,6 +291,32 @@ class ActionPanel:
             "color=positive size=lg"
         ).classes("mt-2")
 
+    def _render_round_end_confirm(self, request: InputRequest) -> None:
+        """Render round-end summary confirmation."""
+        kabo_caller = request.extra.get("kabo_caller", "")
+        kabo_successful = request.extra.get("kabo_successful", False)
+
+        ui.label("Round Complete!").classes("text-xl font-bold text-green-400")
+
+        if kabo_caller:
+            if kabo_successful:
+                ui.label(f"{kabo_caller}'s KABO was successful!").classes(
+                    "text-green-300 font-bold"
+                )
+            else:
+                ui.label(f"{kabo_caller}'s KABO failed!").classes(
+                    "text-red-300 font-bold"
+                )
+
+        ui.button(
+            "Continue to Next Round",
+            on_click=lambda: self._submit("OK"),
+        ).props("color=positive size=lg").classes("mt-3")
+
+        ui.label("Auto-continuing in 30s...").classes(
+            "text-xs text-gray-500 mt-1"
+        )
+
     def _render_generic_options(self, request: InputRequest) -> None:
         """Fallback: render simple buttons for each option."""
         with ui.row().classes("gap-2 flex-wrap"):

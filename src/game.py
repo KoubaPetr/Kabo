@@ -2,6 +2,7 @@
 Class Game
 """
 # from collections import deque
+import threading
 from typing import Dict, List, Type
 from src.card import Card
 from src.human_player import HumanPlayer, P
@@ -101,6 +102,9 @@ class Game:
             self.rounds.append(_round)
             self.rounds[-1].start_playing()
 
+            # Show round-end summary to web players (if any)
+            self._show_round_end_to_players(_round)
+
             _scores: Dict[Type[P], int] = self._read_players_game_scores()
             _play_next_round: bool = True
 
@@ -118,6 +122,65 @@ class Game:
             if not _play_next_round:
                 break
         self._report_standings_after_game()
+
+    def _show_round_end_to_players(self, _round: Round) -> None:
+        """Show round-end summary to WebPlayers and wait for confirmation."""
+        from src.web.web_player import WebPlayer
+        web_players = [p for p in self.players if isinstance(p, WebPlayer)]
+        if not web_players:
+            return
+
+        # Build round summary
+        from src.web.game_state import RoundSummary, PlayerView, CardView
+        player_hands = []
+        for p in _round.players:
+            cards = []
+            for i, card in enumerate(p.hand):
+                if card is None:
+                    continue
+                cards.append(CardView(
+                    position=i, value=card.value,
+                    is_known=True, is_publicly_visible=True,
+                ))
+            player_hands.append(PlayerView(
+                name=p.name, character=p.character,
+                is_current_player=False,
+                cards=cards, game_score=p.players_game_score,
+                called_kabo=p.called_kabo,
+            ))
+
+        kabo_caller = ""
+        kabo_successful = False
+        for p in _round.players:
+            if p.called_kabo:
+                kabo_caller = p.name
+                round_score = _round.round_scores.get(p.name, 0)
+                kabo_successful = (round_score == 0)
+                break
+
+        summary = RoundSummary(
+            round_number=_round.round_id,
+            player_hands=player_hands,
+            round_scores=_round.round_scores,
+            game_scores={p.name: p.players_game_score for p in _round.players},
+            kabo_caller=kabo_caller,
+            kabo_successful=kabo_successful,
+        )
+
+        # Ask each WebPlayer to confirm in parallel threads
+        threads = []
+        for wp in web_players:
+            t = threading.Thread(
+                target=wp.wait_for_round_end_confirmation,
+                args=(summary, _round),
+                daemon=True,
+            )
+            threads.append(t)
+            t.start()
+
+        # Wait for all with timeout
+        for t in threads:
+            t.join(timeout=35)
 
     def _update_start_player(self) -> None:
         """
