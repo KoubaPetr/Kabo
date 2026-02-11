@@ -173,7 +173,42 @@ class WebPlayer(Player):
                 except Exception:
                     pass
 
-    # --- Overrides for state emission ---
+    # --- Overrides for state emission and log masking ---
+
+    def perform_card_exchange(self, cards_selected_for_exchange: List[Card],
+                              drawn_card: Card, _round: Round) -> None:
+        """Override to mask card values in print when log toggle is off."""
+        show_values = not self._room or getattr(self._room, "show_revelations", False)
+        if show_values:
+            super().perform_card_exchange(cards_selected_for_exchange, drawn_card, _round)
+        else:
+            # Call super but suppress its print by temporarily redirecting
+            import io, sys
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            try:
+                super().perform_card_exchange(cards_selected_for_exchange, drawn_card, _round)
+            finally:
+                sys.stdout = old_stdout
+            count = len(cards_selected_for_exchange)
+            print(f"  {self.name} exchanged {count} card(s) for a new card.")
+
+    def failed_multi_exchange(self, drawn_card: Card,
+                              attempted_cards: List[Card], _round: Round) -> None:
+        """Override to mask card values in print when log toggle is off."""
+        show_values = not self._room or getattr(self._room, "show_revelations", False)
+        if show_values:
+            super().failed_multi_exchange(drawn_card, attempted_cards, _round)
+        else:
+            import io, sys
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            try:
+                super().failed_multi_exchange(drawn_card, attempted_cards, _round)
+            finally:
+                sys.stdout = old_stdout
+            count = len(attempted_cards)
+            print(f"  Exchange FAILED! {self.name} attempted {count} cards but they don't match.")
 
     def keep_drawn_card(self, drawn_card: Card, _round: Round) -> None:
         """Override to emit updated state after exchange completes."""
@@ -381,9 +416,16 @@ class WebPlayer(Player):
                 known_cards.append({"position": i, "value": c.value})
             else:
                 hand_display.append("?")
-        if self.event_bus:
-            self.event_bus.emit("log", f"{self.name}'s hand: [{', '.join(hand_display)}]")
 
+        # Log: show values only if toggle is on or solo mode (no room)
+        show_values = not self._room or getattr(self._room, "show_revelations", False)
+        if self.event_bus:
+            if show_values:
+                self.event_bus.emit("log", f"{self.name}'s hand: [{', '.join(hand_display)}]")
+            else:
+                self.event_bus.emit("log", "Memorize your starting cards!")
+
+        # Action panel always shows actual card values for the viewing player
         state = self._build_state_snapshot(self._current_round)
         state.input_request = InputRequest(
             request_type="initial_peek_reveal",
@@ -397,24 +439,23 @@ class WebPlayer(Player):
     def tell_player_card_value(self, card: Card, effect: str) -> None:
         """Show the peeked/spied card value and wait for player confirmation."""
         if effect == "PEAK":
-            msg = f"You peeked at your card: value is {card.value}"
+            full_msg = f"You peeked at your card: value is {card.value}"
+            masked_msg = "You peeked at your card"
         else:
-            msg = f"You spied on a card: value is {card.value}"
+            full_msg = f"You spied on a card: value is {card.value}"
+            masked_msg = "You spied on a card"
+
+        # Log: show value only if toggle is on or solo mode (no room)
+        show_values = not self._room or getattr(self._room, "show_revelations", False)
+        log_msg = full_msg if show_values else masked_msg
         if self.event_bus:
-            self.event_bus.emit("log", msg)
+            self.event_bus.emit("log", log_msg)
 
-        # Broadcast revelation to all players if room setting is enabled
-        if self._room and getattr(self._room, "show_revelations", False):
-            if effect == "PEAK":
-                broadcast_msg = f"{self.name} peeked at their card: value is {card.value}"
-            else:
-                broadcast_msg = f"{self.name} spied on a card: value is {card.value}"
-            self._room.broadcast_log(broadcast_msg)
-
+        # Action panel always shows the actual card value for the viewing player
         state = self._build_state_snapshot(self._current_round)
         state.input_request = InputRequest(
             request_type="card_reveal",
-            prompt=msg,
+            prompt=full_msg,
             options=["OK"],
             extra={"value": card.value, "effect": effect},
         )
