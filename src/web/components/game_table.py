@@ -110,7 +110,9 @@ class GameTable:
             ui.separator()
 
             # Player's hand
-            ui.label("Your Hand").classes("text-sm font-bold text-gray-300")
+            self._player_hand_label = ui.label("Your Hand").classes(
+                "text-sm font-bold text-gray-300"
+            )
             self._player_hand_container = ui.row().classes(
                 "w-full justify-center gap-3"
             )
@@ -187,18 +189,6 @@ class GameTable:
             else:
                 opponent_views.append(p)
 
-        # Render opponents (clickable in spy/swap modes)
-        opponents_clickable = self._clickable_mode in (
-            "specify_spying", "specify_swap_opponent"
-        )
-        if self._opponents_container:
-            self._opponents_container.clear()
-            with self._opponents_container:
-                for opp in opponent_views:
-                    self._render_opponent_hand(
-                        opp, clickable=opponents_clickable
-                    )
-
         # Determine clickable mode from input request
         self._clickable_mode = None
         if state.input_request:
@@ -213,6 +203,20 @@ class GameTable:
                 self._clickable_mode = "specify_spying"
             elif rt == "specify_swap":
                 self._clickable_mode = "specify_swap_own"
+
+        # Render opponents (clickable in spy/swap modes, with turn indicator)
+        opponents_clickable = self._clickable_mode in (
+            "specify_spying", "specify_swap_opponent"
+        )
+        if self._opponents_container:
+            self._opponents_container.clear()
+            with self._opponents_container:
+                for opp in opponent_views:
+                    is_active = (opp.name == state.active_turn_player_name)
+                    self._render_opponent_hand(
+                        opp, clickable=opponents_clickable,
+                        is_active_turn=is_active,
+                    )
 
         # Render center (deck + discard)
         deck_clickable = (self._clickable_mode == "pick_turn_type")
@@ -270,19 +274,46 @@ class GameTable:
                                     on_click=lambda p=pos: self._on_hand_card_click(p),
                                 )
 
+        # Update player hand label with turn indicator
+        is_my_turn = (
+            state.active_turn_player_name == state.current_player_name
+        )
+        if hasattr(self, "_player_hand_label") and self._player_hand_label:
+            if is_my_turn:
+                self._player_hand_label.set_text("Your Hand - YOUR TURN!")
+                self._player_hand_label.classes(
+                    replace="text-sm font-bold text-yellow-300"
+                )
+            else:
+                self._player_hand_label.set_text("Your Hand")
+                self._player_hand_label.classes(
+                    replace="text-sm font-bold text-gray-300"
+                )
+
         # Update scoreboard
         self.scoreboard.update(state.players)
 
     def _render_opponent_hand(self, opponent: PlayerView,
-                              clickable: bool = False) -> None:
+                              clickable: bool = False,
+                              is_active_turn: bool = False) -> None:
         """Render a single opponent's hand."""
-        with ui.column().classes("items-center gap-1"):
+        border = (
+            "border-2 border-yellow-400 rounded-lg p-2"
+            if is_active_turn else "p-2"
+        )
+        with ui.column().classes(f"items-center gap-1 {border}"):
             label_text = opponent.name
             if opponent.character == "COMPUTER":
                 label_text += " (AI)"
             if opponent.called_kabo:
                 label_text += " [KABO]"
-            ui.label(label_text).classes("text-sm font-bold text-gray-300")
+            label_cls = "text-sm font-bold"
+            if is_active_turn:
+                label_text += " - Playing..."
+                label_cls += " text-yellow-300"
+            else:
+                label_cls += " text-gray-300"
+            ui.label(label_text).classes(label_cls)
             with ui.row().classes("gap-1"):
                 for card in opponent.cards:
                     render_card(
@@ -342,8 +373,10 @@ class GameTable:
             self._opponents_container.clear()
             with self._opponents_container:
                 for opp in opponent_views:
+                    is_active = (opp.name == state.active_turn_player_name)
                     self._render_opponent_hand(
-                        opp, clickable=opponents_clickable
+                        opp, clickable=opponents_clickable,
+                        is_active_turn=is_active,
                     )
 
     def show_notification(self, notification: TurnNotification) -> None:
