@@ -38,6 +38,27 @@ class InputRequest:
 
 
 @dataclass
+class TurnNotification:
+    """A notification shown to players about game events."""
+    message: str
+    notification_type: str  # "your_turn", "opponent_action", "kabo_called"
+    action_type: str = ""  # "draw_deck", "draw_discard", "keep", "discard", "peek", "spy", "swap"
+    player_name: str = ""
+    extra: Dict = field(default_factory=dict)
+
+
+@dataclass
+class RoundSummary:
+    """Summary of a completed round for the end-of-round screen."""
+    round_number: int
+    player_hands: List[PlayerView]  # all cards revealed
+    round_scores: Dict[str, int]  # player_name -> round score
+    game_scores: Dict[str, int]  # player_name -> updated total
+    kabo_caller: str = ""
+    kabo_successful: bool = False
+
+
+@dataclass
 class GameStateSnapshot:
     """Complete snapshot of the game state as seen by a specific player."""
     phase: str  # "setup", "peek", "playing", "round_over", "game_over"
@@ -51,3 +72,4 @@ class GameStateSnapshot:
     kabo_called: bool = False
     kabo_caller: str = ""
     active_turn_player_name: str = ""
+    round_summary: Optional[RoundSummary] = None

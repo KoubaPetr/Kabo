@@ -88,9 +88,12 @@ def render_room_waiting_page(room_code: str, player_name: str,
         ai_c = info["ai_count"]
 
         # Update settings label
+        show_rev = info.get("show_revelations", False)
+        rev_text = " | Revelations: ON" if show_rev else ""
         settings_label.set_text(
             f"Players: {len(player_names)}/{max_p} humans"
             + (f" + {ai_c} AI" if ai_c else "")
+            + rev_text
         )
 
         # Update players list

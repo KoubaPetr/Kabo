@@ -82,6 +82,7 @@ class WebApp:
         bus.subscribe("log", lambda m: self._ui_queue.put(("log", m)))
         bus.subscribe("game_over", lambda d: self._ui_queue.put(("game_over", d)))
         bus.subscribe("card_revealed", lambda d: self._ui_queue.put(("card_revealed", d)))
+        bus.subscribe("notification", lambda n: self._ui_queue.put(("notification", n)))
 
     def submit_response(self, response) -> None:
         """Forward UI response to the WebPlayer."""
@@ -107,6 +108,8 @@ class WebApp:
                     self._on_game_over(data)
                 elif event_type == "card_revealed":
                     self._on_card_revealed(data)
+                elif event_type == "notification":
+                    self._on_notification(data)
             except Exception as e:
                 print(f"[WebApp] Error processing {event_type}: {e}")
 
@@ -130,6 +133,10 @@ class WebApp:
     def _on_card_revealed(self, data) -> None:
         """Legacy handler - card reveals are now shown via action panel confirmation."""
         pass
+
+    def _on_notification(self, notification) -> None:
+        if self.game_table:
+            self.game_table.show_notification(notification)
 
 
 def start_web_gui() -> None:
@@ -244,9 +251,10 @@ def start_web_gui() -> None:
             )
 
         def on_create_room(player_name: str, max_players: int,
-                           ai_count: int):
+                           ai_count: int, show_revelations: bool = False):
             try:
-                room = create_room(player_name, max_players, ai_count)
+                room = create_room(player_name, max_players, ai_count,
+                                   show_revelations=show_revelations)
                 _webapp.event_bus = EventBus()
                 _webapp._subscribe_to_bus(_webapp.event_bus)
                 room.add_player(player_name, _webapp.event_bus)
@@ -303,6 +311,7 @@ def start_web_gui() -> None:
                 "ai_count": _webapp.room.ai_count,
                 "state": _webapp.room.state,
                 "host_name": _webapp.room.host_name,
+                "show_revelations": _webapp.room.show_revelations,
             }
 
         def on_start():

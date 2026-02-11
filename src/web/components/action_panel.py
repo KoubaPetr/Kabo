@@ -20,6 +20,7 @@ class ActionPanel:
         self._container = None
         self._current_request: Optional[InputRequest] = None
         self._selected_cards: List[int] = []
+        self._game_table = None  # Set by GameTable.build()
 
     def build(self) -> None:
         """Create the action panel container."""
@@ -65,6 +66,9 @@ class ActionPanel:
 
     def _render_pick_turn_type(self, request: InputRequest) -> None:
         """Render turn type selection buttons."""
+        ui.label(
+            "Click the deck to draw, or the discard pile to take"
+        ).classes("text-xs text-gray-400 mb-1 italic")
         with ui.row().classes("gap-2 flex-wrap"):
             for option in request.options:
                 label_map = {
@@ -114,6 +118,9 @@ class ActionPanel:
         drawn_val = request.extra.get("drawn_card_value", "?")
 
         ui.label(f"New card value: {drawn_val}").classes("text-yellow-300 text-sm mb-1")
+        ui.label(
+            "Click cards in your hand to select, or use buttons below"
+        ).classes("text-xs text-gray-400 mb-1 italic")
 
         with ui.row().classes("gap-2 flex-wrap"):
             for info in hand_info:
@@ -291,6 +298,32 @@ class ActionPanel:
             "color=positive size=lg"
         ).classes("mt-2")
 
+    def _render_round_end_confirm(self, request: InputRequest) -> None:
+        """Render round-end summary confirmation."""
+        kabo_caller = request.extra.get("kabo_caller", "")
+        kabo_successful = request.extra.get("kabo_successful", False)
+
+        ui.label("Round Complete!").classes("text-xl font-bold text-green-400")
+
+        if kabo_caller:
+            if kabo_successful:
+                ui.label(f"{kabo_caller}'s KABO was successful!").classes(
+                    "text-green-300 font-bold"
+                )
+            else:
+                ui.label(f"{kabo_caller}'s KABO failed!").classes(
+                    "text-red-300 font-bold"
+                )
+
+        ui.button(
+            "Continue to Next Round",
+            on_click=lambda: self._submit("OK"),
+        ).props("color=positive size=lg").classes("mt-3")
+
+        ui.label("Auto-continuing in 30s...").classes(
+            "text-xs text-gray-500 mt-1"
+        )
+
     def _render_generic_options(self, request: InputRequest) -> None:
         """Fallback: render simple buttons for each option."""
         with ui.row().classes("gap-2 flex-wrap"):
@@ -338,5 +371,7 @@ class ActionPanel:
         """Submit the response and show waiting state."""
         self._current_request = None
         self._selected_cards = []
+        if self._game_table:
+            self._game_table._clickable_mode = None
         self.show_waiting("Processing...")
         self._on_submit(response)

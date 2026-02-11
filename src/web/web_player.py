@@ -14,7 +14,8 @@ from src.card import Card
 from src.round import Round
 from src.web.event_bus import EventBus
 from src.web.game_state import (
-    GameStateSnapshot, PlayerView, CardView, InputRequest,
+    GameStateSnapshot, PlayerView, CardView, InputRequest, RoundSummary,
+    TurnNotification,
 )
 
 P = TypeVar("P", bound=Player)
@@ -155,6 +156,45 @@ class WebPlayer(Player):
                 self.name, self._current_round
             )
 
+    # --- Notification broadcasting ---
+
+    def _broadcast_action(self, action_type: str, description: str,
+                          extra: dict = None) -> None:
+        """Broadcast an action notification to all other players."""
+        if not self._room:
+            return
+        notification = TurnNotification(
+            message=description,
+            notification_type="opponent_action",
+            action_type=action_type,
+            player_name=self.name,
+            extra=extra or {},
+        )
+        with self._room._lock:
+            others = {name: info for name, info in self._room.players.items()
+                      if name != self.name}
+        for name, info in others.items():
+            bus = info.get("event_bus")
+            if bus:
+                try:
+                    bus.emit("notification", notification)
+                except Exception:
+                    pass
+
+    # --- Overrides for state emission ---
+
+    def keep_drawn_card(self, drawn_card: Card, _round: Round) -> None:
+        """Override to emit updated state after exchange completes."""
+        super().keep_drawn_card(drawn_card, _round)
+        # Emit updated state so UI reflects changes (extra cards, face-up cards)
+        if self._room:
+            self._room.broadcast_state_to_others(self.name, _round)
+        state = self._build_state_snapshot(_round)
+        state.input_request = InputRequest(
+            request_type="waiting", prompt="Exchange complete.", options=[])
+        if self.event_bus:
+            self.event_bus.emit("state_update", state)
+
     # --- Decision methods ---
 
     def pick_turn_type(self, _round: Round = None) -> str:
@@ -173,6 +213,29 @@ class WebPlayer(Player):
         if response is None:
             response = "HIT_DECK"  # safe default on timeout
         print(f"  {self.name} chose: {response}")
+        # Broadcast action to other players
+        action_map = {
+            "HIT_DECK": ("draw_deck", f"{self.name} draws from deck"),
+            "HIT_DISCARD_PILE": ("draw_discard", f"{self.name} takes from discard pile"),
+            "KABO": ("kabo", f"{self.name} calls KABO!"),
+        }
+        action_type, desc = action_map.get(response, ("unknown", f"{self.name} acts"))
+        notification_type = "kabo_called" if response == "KABO" else "opponent_action"
+        if self._room:
+            notification = TurnNotification(
+                message=desc, notification_type=notification_type,
+                action_type=action_type, player_name=self.name,
+            )
+            with self._room._lock:
+                others = {n: info for n, info in self._room.players.items()
+                          if n != self.name}
+            for n, info in others.items():
+                bus = info.get("event_bus")
+                if bus:
+                    try:
+                        bus.emit("notification", notification)
+                    except Exception:
+                        pass
         return response
 
     def decide_on_card_use(self, card: Card) -> str:
@@ -192,6 +255,14 @@ class WebPlayer(Player):
         response = self._wait_for_response()
         if response is None:
             response = "DISCARD"
+        # Broadcast decision to other players
+        decision_map = {
+            "KEEP": ("keep", f"{self.name} keeps the drawn card"),
+            "DISCARD": ("discard", f"{self.name} discards the drawn card"),
+            "EFFECT": ("effect", f"{self.name} uses card effect: {card.effect}"),
+        }
+        action_type, desc = decision_map.get(response, ("unknown", f"{self.name} acts"))
+        self._broadcast_action(action_type, desc)
         return response
 
     def pick_hand_cards_for_exchange(self, drawn_card: Card) -> List[Card]:
@@ -272,6 +343,8 @@ class WebPlayer(Player):
         opponent = _round.get_player_by_name(response["opponent"])
         card = opponent.hand[response["card_idx"]]
         print(f"  {self.name} spies on {opponent.name}'s card at position {response['card_idx']}.")
+        self._broadcast_action(
+            "spy", f"{self.name} spied on {opponent.name}'s card at position {response['card_idx']}")
         return opponent, card
 
     def specify_swap(self, _round: Round) -> Tuple[Type[P], int, int]:
@@ -302,6 +375,8 @@ class WebPlayer(Player):
         opponent = _round.get_player_by_name(response["opponent"])
         print(f"  {self.name} swaps own card (pos {response['own_card_idx']}) "
               f"with {opponent.name}'s card (pos {response['opp_card_idx']}).")
+        self._broadcast_action(
+            "swap", f"{self.name} swapped a card with {opponent.name}")
         return opponent, response["own_card_idx"], response["opp_card_idx"]
 
     def report_known_cards_on_hand(self) -> None:
@@ -336,6 +411,14 @@ class WebPlayer(Player):
         if self.event_bus:
             self.event_bus.emit("log", msg)
 
+        # Broadcast revelation to all players if room setting is enabled
+        if self._room and getattr(self._room, "show_revelations", False):
+            if effect == "PEAK":
+                broadcast_msg = f"{self.name} peeked at their card: value is {card.value}"
+            else:
+                broadcast_msg = f"{self.name} spied on a card: value is {card.value}"
+            self._room.broadcast_log(broadcast_msg)
+
         state = self._build_state_snapshot(self._current_round)
         state.input_request = InputRequest(
             request_type="card_reveal",
@@ -345,3 +428,34 @@ class WebPlayer(Player):
         )
         self._emit_input_request(state)
         self._wait_for_response()
+
+    def wait_for_round_end_confirmation(self, round_summary: RoundSummary,
+                                        _round: Round) -> None:
+        """Show round-end summary and wait for player to confirm continuation."""
+        # Build state with all cards revealed
+        state = self._build_state_snapshot(_round, phase="round_over")
+        # Replace player views with fully revealed versions
+        state.players = round_summary.player_hands
+        # Mark the current player in the revealed views
+        for pv in state.players:
+            pv.is_current_player = (pv.name == self.name)
+        state.round_summary = round_summary
+        state.input_request = InputRequest(
+            request_type="round_end_confirm",
+            prompt="Round complete! Review scores and continue.",
+            options=["OK"],
+            extra={
+                "round_scores": round_summary.round_scores,
+                "game_scores": round_summary.game_scores,
+                "kabo_caller": round_summary.kabo_caller,
+                "kabo_successful": round_summary.kabo_successful,
+            },
+        )
+        if self.event_bus:
+            self.event_bus.emit("state_update", state)
+            self.event_bus.emit("input_request", state.input_request)
+        # Block with timeout - auto-continue if player doesn't confirm
+        try:
+            self._response_queue.get(timeout=30)
+        except queue.Empty:
+            pass

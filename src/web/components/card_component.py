@@ -33,7 +33,8 @@ EFFECT_NAMES = {
 
 def render_card(card: CardView, size: str = "normal",
                 clickable: bool = False, on_click=None,
-                selected: bool = False, label: str = "") -> None:
+                selected: bool = False, label: str = "",
+                animate: str = "") -> None:
     """Render a single card as an HTML element.
 
     Args:
@@ -43,6 +44,7 @@ def render_card(card: CardView, size: str = "normal",
         on_click: callback when clicked
         selected: whether to show selected highlight
         label: optional label below the card (e.g. position number)
+        animate: CSS animation class (e.g. "animate-draw", "animate-appear")
     """
     if size == "small":
         w, h, text_size = "w-12", "h-16", "text-sm"
@@ -61,12 +63,12 @@ def render_card(card: CardView, size: str = "normal",
         effect = ""
 
     border = "border-2 border-yellow-400" if selected else "border border-gray-600"
-    cursor = "cursor-pointer hover:scale-110 transition-transform" if clickable else ""
+    cursor = "cursor-pointer hover:scale-110 transition-transform card-hover" if clickable else ""
     shadow = "shadow-lg" if selected else "shadow-md"
 
     with ui.column().classes(f"items-center gap-0.5"):
         card_el = ui.element("div").classes(
-            f"{w} {h} rounded-lg {border} {cursor} {shadow} "
+            f"{w} {h} rounded-lg {border} {cursor} {shadow} {animate} "
             f"flex flex-col items-center justify-center select-none"
         ).style(f"background-color: {bg_color}; color: white;")
 
@@ -116,14 +118,19 @@ def render_deck(cards_left: int, clickable: bool = False, on_click=None) -> None
         if clickable and on_click:
             deck_el.on("click", lambda e, cb=on_click: cb())
 
+        if clickable:
+            ui.label("Click to draw").classes("text-xs text-yellow-400")
 
-def render_discard_pile(top_value: int = None) -> None:
+
+def render_discard_pile(top_value: int = None,
+                       clickable: bool = False, on_click=None) -> None:
     """Render the discard pile showing the top card."""
+    cursor = "cursor-pointer hover:scale-105 transition-transform" if clickable else ""
     with ui.column().classes("items-center gap-0.5"):
         if top_value is not None:
             bg_color = CARD_COLORS.get(top_value, "#555")
             card_el = ui.element("div").classes(
-                "w-16 h-22 rounded-lg border border-gray-400 shadow-md "
+                f"w-16 h-22 rounded-lg border border-gray-400 {cursor} shadow-md "
                 "flex flex-col items-center justify-center select-none"
             ).style(f"background-color: {bg_color}; color: white;")
 
@@ -132,6 +139,9 @@ def render_discard_pile(top_value: int = None) -> None:
                 effect = EFFECT_NAMES.get(top_value, "")
                 if effect:
                     ui.label(effect).classes("text-xs opacity-80")
+
+            if clickable and on_click:
+                card_el.on("click", lambda e, cb=on_click: cb())
         else:
             ui.element("div").classes(
                 "w-16 h-22 rounded-lg border border-dashed border-gray-600 "
@@ -139,3 +149,5 @@ def render_discard_pile(top_value: int = None) -> None:
             ).style("background-color: transparent; color: #666;")
 
         ui.label("Discard").classes("text-xs text-gray-400")
+        if clickable:
+            ui.label("Click to take").classes("text-xs text-yellow-400")

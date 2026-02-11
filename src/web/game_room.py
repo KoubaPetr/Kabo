@@ -17,11 +17,13 @@ class GameRoom:
     """A multiplayer game room that holds player slots and manages shared game state."""
 
     def __init__(self, room_code: str, host_name: str,
-                 max_players: int = 4, ai_count: int = 0):
+                 max_players: int = 4, ai_count: int = 0,
+                 show_revelations: bool = False):
         self.room_code = room_code
         self.host_name = host_name.upper()
         self.max_players = max_players
         self.ai_count = ai_count
+        self.show_revelations = show_revelations
         self.state = "waiting"  # waiting, playing, finished
         # Player slots: upper-cased name -> {"event_bus": EventBus, "web_player": None}
         self.players: Dict[str, dict] = {}
@@ -82,6 +84,19 @@ class GameRoom:
                 bus.emit("log", message)
             except Exception:
                 pass
+
+    def send_private_log(self, player_name: str, message: str) -> None:
+        """Send a log message to a specific player only."""
+        uname = player_name.upper()
+        with self._lock:
+            info = self.players.get(uname)
+        if info:
+            bus = info.get("event_bus")
+            if bus:
+                try:
+                    bus.emit("log", message)
+                except Exception:
+                    pass
 
     def broadcast_game_over(self, data=None) -> None:
         """Send game_over to all connected players."""
@@ -147,11 +162,13 @@ def _generate_code(length: int = 5) -> str:
 
 
 def create_room(host_name: str, max_players: int = 4,
-                ai_count: int = 0) -> GameRoom:
+                ai_count: int = 0,
+                show_revelations: bool = False) -> GameRoom:
     """Create a new room and add the host as the first player."""
     with _rooms_lock:
         code = _generate_code()
-        room = GameRoom(code, host_name, max_players, ai_count)
+        room = GameRoom(code, host_name, max_players, ai_count,
+                        show_revelations=show_revelations)
         _rooms[code] = room
     return room
 
