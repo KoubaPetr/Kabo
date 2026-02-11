@@ -1,8 +1,6 @@
 """
 Class Game
 """
-# from collections import deque
-import threading
 from typing import Dict, List, Type
 from src.card import Card
 from src.human_player import HumanPlayer, P
