@@ -95,6 +95,10 @@ class Round:
         Method calling all players in the round to see certain number of their cards.
         :return:
         """
+        # Notify all players of round start so they see the table immediately
+        for player in self.players:
+            player.notify_round_start(self)
+
         for player in self.players:
             if player.character not in ("COMPUTER", "WEB"):
                 input(f"\n>>> {player.name}, press Enter to peek at your cards...")

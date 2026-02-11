@@ -139,7 +139,7 @@ class WebApp:
             self.game_table.show_notification(notification)
 
 
-def start_web_gui() -> None:
+def start_web_gui(port: int = 8080) -> None:
     """Launch the NiceGUI web application."""
 
     @ui.page("/")
@@ -370,11 +370,11 @@ def start_web_gui() -> None:
         )
 
     host = os.environ.get("HOST", "0.0.0.0")
-    port = int(os.environ.get("PORT", 8080))
+    effective_port = int(os.environ.get("PORT", port))
     ui.run(
         title="KABO - Card Game",
         host=host,
-        port=port,
+        port=effective_port,
         reload=False,
         storage_secret=os.environ.get("STORAGE_SECRET", "kabo-default-dev-secret"),
     )

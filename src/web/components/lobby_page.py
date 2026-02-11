@@ -57,9 +57,10 @@ def render_lobby_page(on_solo: Callable, on_create_room: Callable,
         )
 
         revelations_switch = ui.switch(
-            "Show card revelations to all players", value=False
+            "Show card values in game log", value=False
         ).classes("mb-2").tooltip(
-            "When ON, peek/spy results are visible to everyone"
+            "When ON, peeked/spied/drawn card values are recorded in the game log. "
+            "When OFF, players must rely on memory."
         )
 
         def do_create():

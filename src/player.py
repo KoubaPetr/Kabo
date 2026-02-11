@@ -37,6 +37,10 @@ class Player:
     report_known_cards_on_hand: Callable
     tell_player_card_value: Callable
 
+    def notify_round_start(self, _round: "Round") -> None:
+        """Called at round start before peek phase. No-op for non-web players."""
+        pass
+
     def __init__(self, name: str, character: str = "HUMAN"):
         """
         Constructor method

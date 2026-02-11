@@ -113,25 +113,18 @@ class ActionPanel:
                 ).props("color=warning")
 
     def _render_pick_hand_cards_for_exchange(self, request: InputRequest) -> None:
-        """Render card selection for exchange."""
-        hand_info = request.extra.get("hand_info", [])
+        """Render card selection for exchange — click cards in hand on the table."""
         drawn_val = request.extra.get("drawn_card_value", "?")
 
         ui.label(f"New card value: {drawn_val}").classes("text-yellow-300 text-sm mb-1")
         ui.label(
-            "Click cards in your hand to select, or use buttons below"
+            "Click cards in your hand to select them for exchange"
         ).classes("text-xs text-gray-400 mb-1 italic")
 
-        with ui.row().classes("gap-2 flex-wrap"):
-            for info in hand_info:
-                pos = info["pos"]
-                val = info["value"]
-                display = str(val) if val is not None else "?"
-                btn = ui.button(
-                    f"Pos {pos}: {display}",
-                    on_click=lambda e, p=pos: self._toggle_card_selection(p),
-                ).classes("text-sm")
-                btn.props("outline" if pos not in self._selected_cards else "")
+        if self._selected_cards:
+            ui.label(
+                f"Selected: {', '.join(f'#{p}' for p in self._selected_cards)}"
+            ).classes("text-sm text-yellow-300")
 
         ui.button(
             "Confirm Exchange",
@@ -139,26 +132,23 @@ class ActionPanel:
         ).props("color=positive").classes("mt-2")
 
     def _render_pick_position_for_new_card(self, request: InputRequest) -> None:
-        """Render position selection buttons."""
-        with ui.row().classes("gap-2"):
-            for option in request.options:
-                ui.button(
-                    f"Position {option}",
-                    on_click=lambda e, o=option: self._submit(int(o)),
-                ).props("color=primary").classes("text-sm")
+        """Render instruction to click an empty slot in hand."""
+        ui.label(
+            "Click an empty slot in your hand to place the card"
+        ).classes("text-xs text-gray-400 mb-1 italic")
 
     def _render_pick_cards_to_see(self, request: InputRequest) -> None:
-        """Render card selection for peeking."""
+        """Render peek instructions — click cards in hand on the table."""
         num_to_see = request.extra.get("num_cards_to_see", 1)
-        num_options = len(request.options)
 
-        with ui.row().classes("gap-2 flex-wrap"):
-            for option in request.options:
-                pos = int(option)
-                ui.button(
-                    f"Card {pos}",
-                    on_click=lambda e, p=pos: self._toggle_peek_selection(p, num_to_see),
-                ).classes("text-sm")
+        ui.label(
+            "Click cards in your hand to select them for peeking"
+        ).classes("text-xs text-gray-400 mb-1 italic")
+
+        if self._selected_cards:
+            ui.label(
+                f"Selected: {', '.join(f'#{p}' for p in self._selected_cards)}"
+            ).classes("text-sm text-yellow-300")
 
         self._peek_confirm_btn = ui.button(
             f"Confirm ({len(self._selected_cards)}/{num_to_see} selected)",
@@ -166,97 +156,45 @@ class ActionPanel:
         ).props("color=positive").classes("mt-2")
 
     def _render_specify_spying(self, request: InputRequest) -> None:
-        """Render opponent + card selection for spying."""
-        opponents = request.extra.get("opponents", [])
-        self._spy_opponent = None
-        self._spy_card_idx = None
-
-        ui.label("1. Choose opponent:").classes("text-sm text-gray-300")
-        with ui.row().classes("gap-2 mb-2"):
-            for opp in opponents:
-                ui.button(
-                    opp["name"],
-                    on_click=lambda e, o=opp: self._select_spy_opponent(o),
-                ).classes("text-sm")
-
-        self._spy_card_container = ui.column().classes("w-full")
+        """Render spy instruction — click an opponent's card on the table."""
+        ui.label(
+            "Click an opponent's card on the table to spy on it"
+        ).classes("text-xs text-gray-400 mb-1 italic")
 
     def _render_specify_swap(self, request: InputRequest) -> None:
-        """Render own card + opponent + their card selection for swapping."""
-        opponents = request.extra.get("opponents", [])
-        hand_info = request.extra.get("hand_info", [])
+        """Render swap instructions — 2-step click-based flow."""
         self._swap_own_idx = None
         self._swap_opponent = None
-        self._swap_opp_idx = None
 
-        ui.label("1. Choose YOUR card to swap:").classes("text-sm text-gray-300")
-        with ui.row().classes("gap-2 mb-2"):
-            for info in hand_info:
-                val = info["value"]
-                display = str(val) if val is not None else "?"
-                ui.button(
-                    f"Pos {info['pos']}: {display}",
-                    on_click=lambda e, p=info["pos"]: self._select_swap_own(p),
-                ).classes("text-sm")
+        self._swap_instruction = ui.label(
+            "1. Click YOUR card to swap"
+        ).classes("text-sm text-yellow-300 italic")
 
-        ui.label("2. Choose opponent:").classes("text-sm text-gray-300")
-        with ui.row().classes("gap-2 mb-2"):
-            for opp in opponents:
-                ui.button(
-                    opp["name"],
-                    on_click=lambda e, o=opp: self._select_swap_opponent(o),
-                ).classes("text-sm")
-
-        self._swap_card_container = ui.column().classes("w-full")
-
-    def _select_spy_opponent(self, opp: dict) -> None:
-        self._spy_opponent = opp["name"]
-        if self._spy_card_container:
-            self._spy_card_container.clear()
-            with self._spy_card_container:
-                ui.label(f"2. Choose {opp['name']}'s card to spy:").classes(
-                    "text-sm text-gray-300"
-                )
-                with ui.row().classes("gap-2"):
-                    for i in range(opp["hand_size"]):
-                        ui.button(
-                            f"Card {i}",
-                            on_click=lambda e, idx=i: self._submit({
-                                "opponent": self._spy_opponent,
-                                "card_idx": idx,
-                            }),
-                        ).classes("text-sm")
-
-    def _select_swap_own(self, pos: int) -> None:
+    def select_swap_own(self, pos: int) -> None:
+        """Called from GameTable when own card is clicked during swap step 1."""
         self._swap_own_idx = pos
-        ui.notify(f"Selected your card at position {pos}", type="info")
-
-    def _select_swap_opponent(self, opp: dict) -> None:
-        self._swap_opponent = opp["name"]
-        if self._swap_card_container:
-            self._swap_card_container.clear()
-            with self._swap_card_container:
-                ui.label(f"3. Choose {opp['name']}'s card:").classes(
-                    "text-sm text-gray-300"
+        if hasattr(self, "_swap_instruction") and self._swap_instruction:
+            self._swap_instruction.set_text(
+                f"Selected your card #{pos}. 2. Now click an opponent's card to swap with"
+            )
+        # Switch game table to opponent-clickable mode
+        if self._game_table:
+            self._game_table._clickable_mode = "specify_swap_opponent"
+            # Re-render opponents to make them clickable
+            if self._game_table._last_state:
+                self._game_table._render_opponents_for_mode(
+                    self._game_table._last_state
                 )
-                with ui.row().classes("gap-2"):
-                    for i in range(opp["hand_size"]):
-                        ui.button(
-                            f"Card {i}",
-                            on_click=lambda e, idx=i: self._confirm_swap(idx),
-                        ).classes("text-sm")
 
-    def _confirm_swap(self, opp_idx: int) -> None:
+    def complete_swap(self, opponent_name: str, opp_card_idx: int) -> None:
+        """Called from GameTable when opponent card is clicked during swap step 2."""
         if self._swap_own_idx is None:
             ui.notify("Please select your card first!", type="warning")
             return
-        if self._swap_opponent is None:
-            ui.notify("Please select an opponent first!", type="warning")
-            return
         self._submit({
             "own_card_idx": self._swap_own_idx,
-            "opponent": self._swap_opponent,
-            "opp_card_idx": opp_idx,
+            "opponent": opponent_name,
+            "opp_card_idx": opp_card_idx,
         })
 
     def _render_card_reveal(self, request: InputRequest) -> None:
@@ -320,7 +258,7 @@ class ActionPanel:
             on_click=lambda: self._submit("OK"),
         ).props("color=positive size=lg").classes("mt-3")
 
-        ui.label("Auto-continuing in 30s...").classes(
+        ui.label("Auto-continuing in 60s...").classes(
             "text-xs text-gray-500 mt-1"
         )
 

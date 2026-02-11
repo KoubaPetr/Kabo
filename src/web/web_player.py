@@ -20,8 +20,6 @@ from src.web.game_state import (
 
 P = TypeVar("P", bound=Player)
 
-RESPONSE_TIMEOUT = 120  # seconds before a player is considered disconnected
-
 
 class WebPlayer(Player):
     """Player subclass that gets input from a browser UI via queue-based blocking."""
@@ -50,16 +48,10 @@ class WebPlayer(Player):
     def _wait_for_response(self):
         """Block the game thread until the UI submits a response.
 
-        In multiplayer, a timeout prevents the game thread from hanging
-        forever if a player disconnects. On timeout, returns a safe default.
+        Blocks indefinitely — regular game actions should not time out.
+        Only round-end confirmation uses a separate timeout.
         """
-        try:
-            return self._response_queue.get(timeout=RESPONSE_TIMEOUT)
-        except queue.Empty:
-            # Player disconnected or timed out
-            if self.event_bus:
-                self.event_bus.emit("log", f"{self.name} timed out!")
-            return None
+        return self._response_queue.get()
 
     def _build_state_snapshot(self, _round: Optional[Round] = None,
                               phase: str = "playing") -> GameStateSnapshot:
@@ -181,7 +173,57 @@ class WebPlayer(Player):
                 except Exception:
                     pass
 
-    # --- Overrides for state emission ---
+    # --- Round lifecycle ---
+
+    def notify_round_start(self, _round: Round) -> None:
+        """Broadcast initial table state to this player at round start."""
+        self._current_round = _round
+        state = self._build_state_snapshot(_round)
+        state.input_request = InputRequest(
+            request_type="waiting",
+            prompt="Round starting... waiting for players to peek at cards.",
+            options=[],
+        )
+        if self.event_bus:
+            self.event_bus.emit("state_update", state)
+            self.event_bus.emit("input_request", state.input_request)
+
+    # --- Overrides for state emission and log masking ---
+
+    def perform_card_exchange(self, cards_selected_for_exchange: List[Card],
+                              drawn_card: Card, _round: Round) -> None:
+        """Override to mask card values in print when log toggle is off."""
+        show_values = not self._room or getattr(self._room, "show_revelations", False)
+        if show_values:
+            super().perform_card_exchange(cards_selected_for_exchange, drawn_card, _round)
+        else:
+            # Call super but suppress its print by temporarily redirecting
+            import io, sys
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            try:
+                super().perform_card_exchange(cards_selected_for_exchange, drawn_card, _round)
+            finally:
+                sys.stdout = old_stdout
+            count = len(cards_selected_for_exchange)
+            print(f"  {self.name} exchanged {count} card(s) for a new card.")
+
+    def failed_multi_exchange(self, drawn_card: Card,
+                              attempted_cards: List[Card], _round: Round) -> None:
+        """Override to mask card values in print when log toggle is off."""
+        show_values = not self._room or getattr(self._room, "show_revelations", False)
+        if show_values:
+            super().failed_multi_exchange(drawn_card, attempted_cards, _round)
+        else:
+            import io, sys
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
+            try:
+                super().failed_multi_exchange(drawn_card, attempted_cards, _round)
+            finally:
+                sys.stdout = old_stdout
+            count = len(attempted_cards)
+            print(f"  Exchange FAILED! {self.name} attempted {count} cards but they don't match.")
 
     def keep_drawn_card(self, drawn_card: Card, _round: Round) -> None:
         """Override to emit updated state after exchange completes."""
@@ -295,7 +337,7 @@ class WebPlayer(Player):
         state = self._build_state_snapshot(self._current_round)
         state.input_request = InputRequest(
             request_type="pick_position_for_new_card",
-            prompt="Choose where to place your new card:",
+            prompt="Click an empty slot in your hand to place the card:",
             options=[str(p) for p in available_positions],
         )
         self._emit_input_request(state)
@@ -332,7 +374,7 @@ class WebPlayer(Player):
         state = self._build_state_snapshot(_round)
         state.input_request = InputRequest(
             request_type="specify_spying",
-            prompt="Choose an opponent and one of their cards to spy on:",
+            prompt="Click an opponent's card on the table to spy on it:",
             extra={"opponents": opponent_info},
         )
         self._emit_input_request(state)
@@ -363,7 +405,7 @@ class WebPlayer(Player):
         state = self._build_state_snapshot(_round)
         state.input_request = InputRequest(
             request_type="specify_swap",
-            prompt="Choose your card, an opponent, and their card to swap:",
+            prompt="Click your card first, then an opponent's card to swap:",
             extra={"opponents": opponent_info, "hand_info": hand_info},
         )
         self._emit_input_request(state)
@@ -389,9 +431,16 @@ class WebPlayer(Player):
                 known_cards.append({"position": i, "value": c.value})
             else:
                 hand_display.append("?")
-        if self.event_bus:
-            self.event_bus.emit("log", f"{self.name}'s hand: [{', '.join(hand_display)}]")
 
+        # Log: show values only if toggle is on or solo mode (no room)
+        show_values = not self._room or getattr(self._room, "show_revelations", False)
+        if self.event_bus:
+            if show_values:
+                self.event_bus.emit("log", f"{self.name}'s hand: [{', '.join(hand_display)}]")
+            else:
+                self.event_bus.emit("log", "Memorize your starting cards!")
+
+        # Action panel always shows actual card values for the viewing player
         state = self._build_state_snapshot(self._current_round)
         state.input_request = InputRequest(
             request_type="initial_peek_reveal",
@@ -405,24 +454,23 @@ class WebPlayer(Player):
     def tell_player_card_value(self, card: Card, effect: str) -> None:
         """Show the peeked/spied card value and wait for player confirmation."""
         if effect == "PEAK":
-            msg = f"You peeked at your card: value is {card.value}"
+            full_msg = f"You peeked at your card: value is {card.value}"
+            masked_msg = "You peeked at your card"
         else:
-            msg = f"You spied on a card: value is {card.value}"
+            full_msg = f"You spied on a card: value is {card.value}"
+            masked_msg = "You spied on a card"
+
+        # Log: show value only if toggle is on or solo mode (no room)
+        show_values = not self._room or getattr(self._room, "show_revelations", False)
+        log_msg = full_msg if show_values else masked_msg
         if self.event_bus:
-            self.event_bus.emit("log", msg)
+            self.event_bus.emit("log", log_msg)
 
-        # Broadcast revelation to all players if room setting is enabled
-        if self._room and getattr(self._room, "show_revelations", False):
-            if effect == "PEAK":
-                broadcast_msg = f"{self.name} peeked at their card: value is {card.value}"
-            else:
-                broadcast_msg = f"{self.name} spied on a card: value is {card.value}"
-            self._room.broadcast_log(broadcast_msg)
-
+        # Action panel always shows the actual card value for the viewing player
         state = self._build_state_snapshot(self._current_round)
         state.input_request = InputRequest(
             request_type="card_reveal",
-            prompt=msg,
+            prompt=full_msg,
             options=["OK"],
             extra={"value": card.value, "effect": effect},
         )
@@ -456,6 +504,6 @@ class WebPlayer(Player):
             self.event_bus.emit("input_request", state.input_request)
         # Block with timeout - auto-continue if player doesn't confirm
         try:
-            self._response_queue.get(timeout=30)
+            self._response_queue.get(timeout=60)
         except queue.Empty:
             pass

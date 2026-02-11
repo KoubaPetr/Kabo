@@ -14,7 +14,7 @@ from typing import Optional
 from src.web.game_state import (
     GameStateSnapshot, PlayerView, CardView, RoundSummary, TurnNotification,
 )
-from src.web.components.card_component import render_card, render_deck, render_discard_pile
+from src.web.components.card_component import render_card, render_card_back, render_deck, render_discard_pile
 from src.web.components.game_log import GameLog
 from src.web.components.scoreboard import Scoreboard
 from src.web.components.action_panel import ActionPanel
@@ -110,7 +110,9 @@ class GameTable:
             ui.separator()
 
             # Player's hand
-            ui.label("Your Hand").classes("text-sm font-bold text-gray-300")
+            self._player_hand_label = ui.label("Your Hand").classes(
+                "text-sm font-bold text-gray-300"
+            )
             self._player_hand_container = ui.row().classes(
                 "w-full justify-center gap-3"
             )
@@ -187,13 +189,6 @@ class GameTable:
             else:
                 opponent_views.append(p)
 
-        # Render opponents
-        if self._opponents_container:
-            self._opponents_container.clear()
-            with self._opponents_container:
-                for opp in opponent_views:
-                    self._render_opponent_hand(opp)
-
         # Determine clickable mode from input request
         self._clickable_mode = None
         if state.input_request:
@@ -202,6 +197,26 @@ class GameTable:
                 self._clickable_mode = "pick_turn_type"
             elif rt in ("pick_hand_cards_for_exchange", "pick_cards_to_see"):
                 self._clickable_mode = rt
+            elif rt == "pick_position_for_new_card":
+                self._clickable_mode = "pick_position_for_new_card"
+            elif rt == "specify_spying":
+                self._clickable_mode = "specify_spying"
+            elif rt == "specify_swap":
+                self._clickable_mode = "specify_swap_own"
+
+        # Render opponents (clickable in spy/swap modes, with turn indicator)
+        opponents_clickable = self._clickable_mode in (
+            "specify_spying", "specify_swap_opponent"
+        )
+        if self._opponents_container:
+            self._opponents_container.clear()
+            with self._opponents_container:
+                for opp in opponent_views:
+                    is_active = (opp.name == state.active_turn_player_name)
+                    self._render_opponent_hand(
+                        opp, clickable=opponents_clickable,
+                        is_active_turn=is_active,
+                    )
 
         # Render center (deck + discard)
         deck_clickable = (self._clickable_mode == "pick_turn_type")
@@ -223,7 +238,8 @@ class GameTable:
 
         # Render player's hand
         hand_clickable = self._clickable_mode in (
-            "pick_hand_cards_for_exchange", "pick_cards_to_see"
+            "pick_hand_cards_for_exchange", "pick_cards_to_see",
+            "pick_position_for_new_card", "specify_swap_own",
         )
         cur_hand_count = len(web_player_view.cards) if web_player_view else 0
         hand_changed = (cur_hand_count != prev_hand_count and prev_hand_count > 0)
@@ -244,22 +260,70 @@ class GameTable:
                                 lambda p=card.position: self._on_hand_card_click(p)
                             ) if hand_clickable else None,
                         )
+                    # Show empty slot placeholders for pick_position_for_new_card
+                    if self._clickable_mode == "pick_position_for_new_card":
+                        available = state.input_request.options if state.input_request else []
+                        existing_positions = {c.position for c in web_player_view.cards}
+                        for pos_str in available:
+                            pos = int(pos_str)
+                            if pos not in existing_positions:
+                                render_card_back(
+                                    size="normal",
+                                    label=f"#{pos} (empty)",
+                                    clickable=True,
+                                    on_click=lambda p=pos: self._on_hand_card_click(p),
+                                )
+
+        # Update player hand label with turn indicator
+        is_my_turn = (
+            state.active_turn_player_name == state.current_player_name
+        )
+        if hasattr(self, "_player_hand_label") and self._player_hand_label:
+            if is_my_turn:
+                self._player_hand_label.set_text("Your Hand - YOUR TURN!")
+                self._player_hand_label.classes(
+                    replace="text-sm font-bold text-yellow-300"
+                )
+            else:
+                self._player_hand_label.set_text("Your Hand")
+                self._player_hand_label.classes(
+                    replace="text-sm font-bold text-gray-300"
+                )
 
         # Update scoreboard
         self.scoreboard.update(state.players)
 
-    def _render_opponent_hand(self, opponent: PlayerView) -> None:
+    def _render_opponent_hand(self, opponent: PlayerView,
+                              clickable: bool = False,
+                              is_active_turn: bool = False) -> None:
         """Render a single opponent's hand."""
-        with ui.column().classes("items-center gap-1"):
+        border = (
+            "border-2 border-yellow-400 rounded-lg p-2"
+            if is_active_turn else "p-2"
+        )
+        with ui.column().classes(f"items-center gap-1 {border}"):
             label_text = opponent.name
             if opponent.character == "COMPUTER":
                 label_text += " (AI)"
             if opponent.called_kabo:
                 label_text += " [KABO]"
-            ui.label(label_text).classes("text-sm font-bold text-gray-300")
+            label_cls = "text-sm font-bold"
+            if is_active_turn:
+                label_text += " - Playing..."
+                label_cls += " text-yellow-300"
+            else:
+                label_cls += " text-gray-300"
+            ui.label(label_text).classes(label_cls)
             with ui.row().classes("gap-1"):
                 for card in opponent.cards:
-                    render_card(card, size="small")
+                    render_card(
+                        card, size="small",
+                        clickable=clickable,
+                        on_click=(
+                            lambda n=opponent.name, idx=card.position:
+                                self._on_opponent_card_click(n, idx)
+                        ) if clickable else None,
+                    )
 
     def _on_deck_click(self) -> None:
         """Handle click on the deck - submit HIT_DECK."""
@@ -272,7 +336,7 @@ class GameTable:
         self.action_panel._submit("HIT_DISCARD_PILE")
 
     def _on_hand_card_click(self, position: int) -> None:
-        """Handle click on a hand card - toggle selection."""
+        """Handle click on a hand card - toggle selection or submit position."""
         if self._clickable_mode == "pick_hand_cards_for_exchange":
             self.action_panel._toggle_card_selection(position)
         elif self._clickable_mode == "pick_cards_to_see":
@@ -281,6 +345,39 @@ class GameTable:
                 num_to_see = self.action_panel._current_request.extra.get(
                     "num_cards_to_see", 1)
             self.action_panel._toggle_peek_selection(position, num_to_see)
+        elif self._clickable_mode == "pick_position_for_new_card":
+            self._clickable_mode = None
+            self.action_panel._submit(position)
+        elif self._clickable_mode == "specify_swap_own":
+            self.action_panel.select_swap_own(position)
+
+    def _on_opponent_card_click(self, opponent_name: str, card_idx: int) -> None:
+        """Handle click on an opponent's card — for spy or swap."""
+        if self._clickable_mode == "specify_spying":
+            self._clickable_mode = None
+            self.action_panel._submit({
+                "opponent": opponent_name,
+                "card_idx": card_idx,
+            })
+        elif self._clickable_mode == "specify_swap_opponent":
+            self._clickable_mode = None
+            self.action_panel.complete_swap(opponent_name, card_idx)
+
+    def _render_opponents_for_mode(self, state: GameStateSnapshot) -> None:
+        """Re-render opponents section with current clickable mode."""
+        opponent_views = [p for p in state.players if not p.is_current_player]
+        opponents_clickable = self._clickable_mode in (
+            "specify_spying", "specify_swap_opponent"
+        )
+        if self._opponents_container:
+            self._opponents_container.clear()
+            with self._opponents_container:
+                for opp in opponent_views:
+                    is_active = (opp.name == state.active_turn_player_name)
+                    self._render_opponent_hand(
+                        opp, clickable=opponents_clickable,
+                        is_active_turn=is_active,
+                    )
 
     def show_notification(self, notification: TurnNotification) -> None:
         """Display an animated notification banner."""

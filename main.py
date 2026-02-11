@@ -9,6 +9,7 @@ Usage:
     python main.py --mode server --num-players 2  # Start server
     python main.py --mode client --name Petr      # Join as client
     python main.py --mode web                    # Browser GUI at http://localhost:8080
+    python main.py --mode web --web-port 9090    # Browser GUI on custom port
 """
 import argparse
 from src.game import Game
@@ -30,6 +31,8 @@ def main():
                         help="Server address")
     parser.add_argument("--port", type=int, default=5555,
                         help="Server port")
+    parser.add_argument("--web-port", type=int, default=8080,
+                        help="Port for web mode (default: 8080)")
 
     args = parser.parse_args()
 
@@ -67,7 +70,7 @@ def main():
 
     elif args.mode == "web":
         from src.web.app import start_web_gui
-        start_web_gui()
+        start_web_gui(port=args.web_port)
 
 
 if __name__ == "__main__":
