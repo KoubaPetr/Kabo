@@ -82,6 +82,7 @@ class WebApp:
         bus.subscribe("log", lambda m: self._ui_queue.put(("log", m)))
         bus.subscribe("game_over", lambda d: self._ui_queue.put(("game_over", d)))
         bus.subscribe("card_revealed", lambda d: self._ui_queue.put(("card_revealed", d)))
+        bus.subscribe("notification", lambda n: self._ui_queue.put(("notification", n)))
 
     def submit_response(self, response) -> None:
         """Forward UI response to the WebPlayer."""
@@ -107,6 +108,8 @@ class WebApp:
                     self._on_game_over(data)
                 elif event_type == "card_revealed":
                     self._on_card_revealed(data)
+                elif event_type == "notification":
+                    self._on_notification(data)
             except Exception as e:
                 print(f"[WebApp] Error processing {event_type}: {e}")
 
@@ -130,6 +133,10 @@ class WebApp:
     def _on_card_revealed(self, data) -> None:
         """Legacy handler - card reveals are now shown via action panel confirmation."""
         pass
+
+    def _on_notification(self, notification) -> None:
+        if self.game_table:
+            self.game_table.show_notification(notification)
 
 
 def start_web_gui() -> None:

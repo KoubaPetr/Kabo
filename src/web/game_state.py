@@ -38,6 +38,16 @@ class InputRequest:
 
 
 @dataclass
+class TurnNotification:
+    """A notification shown to players about game events."""
+    message: str
+    notification_type: str  # "your_turn", "opponent_action", "kabo_called"
+    action_type: str = ""  # "draw_deck", "draw_discard", "keep", "discard", "peek", "spy", "swap"
+    player_name: str = ""
+    extra: Dict = field(default_factory=dict)
+
+
+@dataclass
 class RoundSummary:
     """Summary of a completed round for the end-of-round screen."""
     round_number: int

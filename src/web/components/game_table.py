@@ -11,7 +11,9 @@ Layout:
 from nicegui import ui, app
 from typing import Optional
 
-from src.web.game_state import GameStateSnapshot, PlayerView, CardView, RoundSummary
+from src.web.game_state import (
+    GameStateSnapshot, PlayerView, CardView, RoundSummary, TurnNotification,
+)
 from src.web.components.card_component import render_card, render_deck, render_discard_pile
 from src.web.components.game_log import GameLog
 from src.web.components.scoreboard import Scoreboard
@@ -37,6 +39,8 @@ class GameTable:
         self._player_hand_container = None
         self._status_label = None
         self._main_container = None
+        self._notification_container = None
+        self._notification_timer = None
 
     def build(self) -> None:
         """Create the full game table layout."""
@@ -45,6 +49,13 @@ class GameTable:
         )
 
         with self._main_container:
+            # Notification overlay
+            self._notification_container = ui.element("div").classes(
+                "w-full text-center hidden"
+            ).style(
+                "transition: all 0.3s ease-in-out;"
+            )
+
             # Status bar
             with ui.row().classes("w-full items-center justify-between"):
                 self._status_label = ui.label("Game starting...").classes(
@@ -111,6 +122,14 @@ class GameTable:
             else:
                 self._status_label.set_text("Your turn!")
                 self._status_label.classes(replace="text-lg font-bold text-yellow-300")
+                # Show YOUR TURN notification for pick_turn_type
+                if (state.input_request and
+                        state.input_request.request_type == "pick_turn_type"):
+                    self.show_notification(TurnNotification(
+                        message="YOUR TURN!",
+                        notification_type="your_turn",
+                        player_name=state.current_player_name,
+                    ))
 
         if self._round_label:
             self._round_label.set_text(
@@ -163,6 +182,56 @@ class GameTable:
             with ui.row().classes("gap-1"):
                 for card in opponent.cards:
                     render_card(card, size="small")
+
+    def show_notification(self, notification: TurnNotification) -> None:
+        """Display an animated notification banner."""
+        if not self._notification_container:
+            return
+
+        self._notification_container.clear()
+        self._notification_container.classes(remove="hidden")
+
+        style_map = {
+            "your_turn": (
+                "bg-yellow-600 text-white text-xl font-bold py-3 px-6 rounded-lg "
+                "animate-pulse shadow-lg"
+            ),
+            "opponent_action": (
+                "bg-blue-700 text-white text-base font-semibold py-2 px-4 rounded-lg "
+                "shadow-md"
+            ),
+            "kabo_called": (
+                "bg-red-700 text-white text-xl font-bold py-3 px-6 rounded-lg "
+                "animate-bounce shadow-lg"
+            ),
+        }
+        css = style_map.get(notification.notification_type,
+                            "bg-gray-700 text-white py-2 px-4 rounded-lg")
+
+        with self._notification_container:
+            ui.label(notification.message).classes(css)
+
+        # Auto-dismiss: YOUR_TURN stays 3s, opponent actions 4s, kabo 5s
+        dismiss_ms = {
+            "your_turn": 3000,
+            "opponent_action": 4000,
+            "kabo_called": 5000,
+        }.get(notification.notification_type, 3000)
+
+        # Cancel previous dismiss timer
+        if self._notification_timer:
+            self._notification_timer.deactivate()
+
+        self._notification_timer = ui.timer(
+            dismiss_ms / 1000.0, self._dismiss_notification, once=True
+        )
+
+    def _dismiss_notification(self) -> None:
+        """Hide the notification container."""
+        if self._notification_container:
+            self._notification_container.classes(add="hidden")
+            self._notification_container.clear()
+        self._notification_timer = None
 
     def _show_round_summary(self, state: GameStateSnapshot) -> None:
         """Display round-end summary with all cards revealed and scores."""
