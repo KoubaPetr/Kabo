@@ -322,7 +322,7 @@ class WebPlayer(Player):
         state = self._build_state_snapshot(self._current_round)
         state.input_request = InputRequest(
             request_type="pick_position_for_new_card",
-            prompt="Choose where to place your new card:",
+            prompt="Click an empty slot in your hand to place the card:",
             options=[str(p) for p in available_positions],
         )
         self._emit_input_request(state)
@@ -359,7 +359,7 @@ class WebPlayer(Player):
         state = self._build_state_snapshot(_round)
         state.input_request = InputRequest(
             request_type="specify_spying",
-            prompt="Choose an opponent and one of their cards to spy on:",
+            prompt="Click an opponent's card on the table to spy on it:",
             extra={"opponents": opponent_info},
         )
         self._emit_input_request(state)
@@ -390,7 +390,7 @@ class WebPlayer(Player):
         state = self._build_state_snapshot(_round)
         state.input_request = InputRequest(
             request_type="specify_swap",
-            prompt="Choose your card, an opponent, and their card to swap:",
+            prompt="Click your card first, then an opponent's card to swap:",
             extra={"opponents": opponent_info, "hand_info": hand_info},
         )
         self._emit_input_request(state)
