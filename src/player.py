@@ -311,9 +311,18 @@ class Player:
             _free_slots.append(_card_idx)
             self.hand[_card_idx] = None
 
-        position_for_new_card: Optional[int] = self.pick_position_for_new_card(
-            _free_slots
+        # Skip asking for position when free slots are contiguous (result is the same)
+        _free_slots_sorted = sorted(_free_slots)
+        slots_contiguous = (
+            len(_free_slots_sorted) <= 1 or
+            (_free_slots_sorted[-1] - _free_slots_sorted[0] + 1) == len(_free_slots_sorted)
         )
+        if slots_contiguous:
+            position_for_new_card: Optional[int] = _free_slots_sorted[0]
+        else:
+            position_for_new_card: Optional[int] = self.pick_position_for_new_card(
+                _free_slots
+            )
 
         if isinstance(position_for_new_card, int):
             self.hand[position_for_new_card] = drawn_card
