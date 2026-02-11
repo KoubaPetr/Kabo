@@ -173,6 +173,21 @@ class WebPlayer(Player):
                 except Exception:
                     pass
 
+    # --- Round lifecycle ---
+
+    def notify_round_start(self, _round: Round) -> None:
+        """Broadcast initial table state to this player at round start."""
+        self._current_round = _round
+        state = self._build_state_snapshot(_round)
+        state.input_request = InputRequest(
+            request_type="waiting",
+            prompt="Round starting... waiting for players to peek at cards.",
+            options=[],
+        )
+        if self.event_bus:
+            self.event_bus.emit("state_update", state)
+            self.event_bus.emit("input_request", state.input_request)
+
     # --- Overrides for state emission and log masking ---
 
     def perform_card_exchange(self, cards_selected_for_exchange: List[Card],
