@@ -41,9 +41,41 @@ class GameTable:
         self._main_container = None
         self._notification_container = None
         self._notification_timer = None
+        # Click-to-interact state
+        self._clickable_mode: Optional[str] = None
+        self._last_state: Optional[GameStateSnapshot] = None
 
     def build(self) -> None:
         """Create the full game table layout."""
+        # Add CSS animations for cards
+        ui.add_head_html("""
+        <style>
+        @keyframes slideFromDeck {
+            0% { transform: translateX(-100px) translateY(-50px) scale(0.5); opacity: 0; }
+            100% { transform: translateX(0) translateY(0) scale(1); opacity: 1; }
+        }
+        @keyframes slideToDiscard {
+            0% { transform: translateX(0) translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateX(100px) translateY(-50px) scale(0.5); opacity: 0; }
+        }
+        @keyframes flipCard {
+            0% { transform: perspective(400px) rotateY(0deg); }
+            50% { transform: perspective(400px) rotateY(90deg); }
+            100% { transform: perspective(400px) rotateY(0deg); }
+        }
+        @keyframes cardAppear {
+            0% { transform: scale(0.3); opacity: 0; }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); opacity: 1; }
+        }
+        .animate-draw { animation: slideFromDeck 0.4s ease-out; }
+        .animate-discard { animation: slideToDiscard 0.3s ease-in; }
+        .animate-flip { animation: flipCard 0.5s ease-in-out; }
+        .animate-appear { animation: cardAppear 0.3s ease-out; }
+        .card-hover:hover { transform: translateY(-4px); transition: transform 0.15s ease; }
+        </style>
+        """)
+
         self._main_container = ui.column().classes(
             "w-full max-w-4xl mx-auto gap-4 p-4"
         )
@@ -86,6 +118,7 @@ class GameTable:
             ui.separator()
 
             # Action panel
+            self.action_panel._game_table = self
             self.action_panel.build()
 
             # Bottom: Log + Scoreboard side by side
@@ -99,6 +132,15 @@ class GameTable:
         """Update the entire table from a game state snapshot."""
         if not self._main_container:
             return
+
+        # Detect changes for animations
+        prev_hand_count = 0
+        if self._last_state:
+            for p in self._last_state.players:
+                if p.is_current_player:
+                    prev_hand_count = len(p.cards)
+                    break
+        self._last_state = state
 
         # Handle round_over phase with summary display
         if state.phase == "round_over" and state.round_summary:
@@ -152,20 +194,56 @@ class GameTable:
                 for opp in opponent_views:
                     self._render_opponent_hand(opp)
 
+        # Determine clickable mode from input request
+        self._clickable_mode = None
+        if state.input_request:
+            rt = state.input_request.request_type
+            if rt == "pick_turn_type":
+                self._clickable_mode = "pick_turn_type"
+            elif rt in ("pick_hand_cards_for_exchange", "pick_cards_to_see"):
+                self._clickable_mode = rt
+
         # Render center (deck + discard)
+        deck_clickable = (self._clickable_mode == "pick_turn_type")
+        discard_clickable = (self._clickable_mode == "pick_turn_type"
+                             and state.discard_top_value is not None)
         if self._center_container:
             self._center_container.clear()
             with self._center_container:
-                render_deck(state.deck_cards_left)
-                render_discard_pile(state.discard_top_value)
+                render_deck(
+                    state.deck_cards_left,
+                    clickable=deck_clickable,
+                    on_click=self._on_deck_click if deck_clickable else None,
+                )
+                render_discard_pile(
+                    state.discard_top_value,
+                    clickable=discard_clickable,
+                    on_click=self._on_discard_click if discard_clickable else None,
+                )
 
         # Render player's hand
+        hand_clickable = self._clickable_mode in (
+            "pick_hand_cards_for_exchange", "pick_cards_to_see"
+        )
+        cur_hand_count = len(web_player_view.cards) if web_player_view else 0
+        hand_changed = (cur_hand_count != prev_hand_count and prev_hand_count > 0)
         if self._player_hand_container:
             self._player_hand_container.clear()
             with self._player_hand_container:
                 if web_player_view:
                     for card in web_player_view.cards:
-                        render_card(card, size="normal", label=f"#{card.position}")
+                        selected = card.position in self.action_panel._selected_cards
+                        anim = "animate-appear" if hand_changed else ""
+                        render_card(
+                            card, size="normal",
+                            label=f"#{card.position}",
+                            clickable=hand_clickable,
+                            selected=selected,
+                            animate=anim,
+                            on_click=(
+                                lambda p=card.position: self._on_hand_card_click(p)
+                            ) if hand_clickable else None,
+                        )
 
         # Update scoreboard
         self.scoreboard.update(state.players)
@@ -182,6 +260,27 @@ class GameTable:
             with ui.row().classes("gap-1"):
                 for card in opponent.cards:
                     render_card(card, size="small")
+
+    def _on_deck_click(self) -> None:
+        """Handle click on the deck - submit HIT_DECK."""
+        self._clickable_mode = None
+        self.action_panel._submit("HIT_DECK")
+
+    def _on_discard_click(self) -> None:
+        """Handle click on the discard pile - submit HIT_DISCARD_PILE."""
+        self._clickable_mode = None
+        self.action_panel._submit("HIT_DISCARD_PILE")
+
+    def _on_hand_card_click(self, position: int) -> None:
+        """Handle click on a hand card - toggle selection."""
+        if self._clickable_mode == "pick_hand_cards_for_exchange":
+            self.action_panel._toggle_card_selection(position)
+        elif self._clickable_mode == "pick_cards_to_see":
+            num_to_see = 1
+            if self.action_panel._current_request:
+                num_to_see = self.action_panel._current_request.extra.get(
+                    "num_cards_to_see", 1)
+            self.action_panel._toggle_peek_selection(position, num_to_see)
 
     def show_notification(self, notification: TurnNotification) -> None:
         """Display an animated notification banner."""

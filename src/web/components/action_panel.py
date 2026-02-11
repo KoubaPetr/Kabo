@@ -20,6 +20,7 @@ class ActionPanel:
         self._container = None
         self._current_request: Optional[InputRequest] = None
         self._selected_cards: List[int] = []
+        self._game_table = None  # Set by GameTable.build()
 
     def build(self) -> None:
         """Create the action panel container."""
@@ -65,6 +66,9 @@ class ActionPanel:
 
     def _render_pick_turn_type(self, request: InputRequest) -> None:
         """Render turn type selection buttons."""
+        ui.label(
+            "Click the deck to draw, or the discard pile to take"
+        ).classes("text-xs text-gray-400 mb-1 italic")
         with ui.row().classes("gap-2 flex-wrap"):
             for option in request.options:
                 label_map = {
@@ -114,6 +118,9 @@ class ActionPanel:
         drawn_val = request.extra.get("drawn_card_value", "?")
 
         ui.label(f"New card value: {drawn_val}").classes("text-yellow-300 text-sm mb-1")
+        ui.label(
+            "Click cards in your hand to select, or use buttons below"
+        ).classes("text-xs text-gray-400 mb-1 italic")
 
         with ui.row().classes("gap-2 flex-wrap"):
             for info in hand_info:
@@ -364,5 +371,7 @@ class ActionPanel:
         """Submit the response and show waiting state."""
         self._current_request = None
         self._selected_cards = []
+        if self._game_table:
+            self._game_table._clickable_mode = None
         self.show_waiting("Processing...")
         self._on_submit(response)
