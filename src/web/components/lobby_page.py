@@ -56,6 +56,12 @@ def render_lobby_page(on_solo: Callable, on_create_room: Callable,
             lambda e: ai_label.set_text(f"AI opponents: {int(e.value)}")
         )
 
+        revelations_switch = ui.switch(
+            "Show card revelations to all players", value=False
+        ).classes("mb-2").tooltip(
+            "When ON, peek/spy results are visible to everyone"
+        )
+
         def do_create():
             name = create_name.value.strip()
             if not name:
@@ -70,7 +76,7 @@ def render_lobby_page(on_solo: Callable, on_create_room: Callable,
             if total > 4:
                 ui.notify("Max 4 total players (humans + AI)", type="warning")
                 return
-            on_create_room(name, max_p, ai_c)
+            on_create_room(name, max_p, ai_c, revelations_switch.value)
 
         ui.button("Create Room", on_click=do_create).classes(
             "w-full"

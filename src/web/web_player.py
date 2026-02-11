@@ -350,6 +350,14 @@ class WebPlayer(Player):
         if self.event_bus:
             self.event_bus.emit("log", msg)
 
+        # Broadcast revelation to all players if room setting is enabled
+        if self._room and getattr(self._room, "show_revelations", False):
+            if effect == "PEAK":
+                broadcast_msg = f"{self.name} peeked at their card: value is {card.value}"
+            else:
+                broadcast_msg = f"{self.name} spied on a card: value is {card.value}"
+            self._room.broadcast_log(broadcast_msg)
+
         state = self._build_state_snapshot(self._current_round)
         state.input_request = InputRequest(
             request_type="card_reveal",

@@ -244,9 +244,10 @@ def start_web_gui() -> None:
             )
 
         def on_create_room(player_name: str, max_players: int,
-                           ai_count: int):
+                           ai_count: int, show_revelations: bool = False):
             try:
-                room = create_room(player_name, max_players, ai_count)
+                room = create_room(player_name, max_players, ai_count,
+                                   show_revelations=show_revelations)
                 _webapp.event_bus = EventBus()
                 _webapp._subscribe_to_bus(_webapp.event_bus)
                 room.add_player(player_name, _webapp.event_bus)
@@ -303,6 +304,7 @@ def start_web_gui() -> None:
                 "ai_count": _webapp.room.ai_count,
                 "state": _webapp.room.state,
                 "host_name": _webapp.room.host_name,
+                "show_revelations": _webapp.room.show_revelations,
             }
 
         def on_start():
