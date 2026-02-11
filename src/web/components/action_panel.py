@@ -320,7 +320,7 @@ class ActionPanel:
             on_click=lambda: self._submit("OK"),
         ).props("color=positive size=lg").classes("mt-3")
 
-        ui.label("Auto-continuing in 30s...").classes(
+        ui.label("Auto-continuing in 60s...").classes(
             "text-xs text-gray-500 mt-1"
         )
 

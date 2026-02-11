@@ -20,8 +20,6 @@ from src.web.game_state import (
 
 P = TypeVar("P", bound=Player)
 
-RESPONSE_TIMEOUT = 120  # seconds before a player is considered disconnected
-
 
 class WebPlayer(Player):
     """Player subclass that gets input from a browser UI via queue-based blocking."""
@@ -50,16 +48,10 @@ class WebPlayer(Player):
     def _wait_for_response(self):
         """Block the game thread until the UI submits a response.
 
-        In multiplayer, a timeout prevents the game thread from hanging
-        forever if a player disconnects. On timeout, returns a safe default.
+        Blocks indefinitely — regular game actions should not time out.
+        Only round-end confirmation uses a separate timeout.
         """
-        try:
-            return self._response_queue.get(timeout=RESPONSE_TIMEOUT)
-        except queue.Empty:
-            # Player disconnected or timed out
-            if self.event_bus:
-                self.event_bus.emit("log", f"{self.name} timed out!")
-            return None
+        return self._response_queue.get()
 
     def _build_state_snapshot(self, _round: Optional[Round] = None,
                               phase: str = "playing") -> GameStateSnapshot:
@@ -456,6 +448,6 @@ class WebPlayer(Player):
             self.event_bus.emit("input_request", state.input_request)
         # Block with timeout - auto-continue if player doesn't confirm
         try:
-            self._response_queue.get(timeout=30)
+            self._response_queue.get(timeout=60)
         except queue.Empty:
             pass
