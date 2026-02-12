@@ -21,7 +21,6 @@ class ActionPanel:
         self._current_request: Optional[InputRequest] = None
         self._selected_cards: List[int] = []
         self._game_table = None  # Set by GameTable.build()
-        self._pending_exchange_position: Optional[int] = None  # Cached from decide_on_card_use click
 
     def build(self) -> None:
         """Create the action panel container."""
@@ -87,11 +86,10 @@ class ActionPanel:
             render_card(CV(position=0, value=drawn_val, is_known=True,
                           is_publicly_visible=False), size="normal")
 
-        ui.label(
-            "Click a card in your hand to replace it with this card"
-        ).classes("text-xs text-gray-400 mb-1 italic")
-
         with ui.row().classes("gap-2 mt-2"):
+            ui.button("Keep", on_click=lambda: self._submit("KEEP")).props(
+                "color=positive"
+            )
             ui.button("Discard", on_click=lambda: self._submit("DISCARD")).props(
                 "color=negative"
             )
@@ -103,18 +101,8 @@ class ActionPanel:
                 ).props("color=warning")
 
     def _render_pick_hand_cards_for_exchange(self, request: InputRequest) -> None:
-        """Render card selection for exchange — click a card to auto-exchange."""
+        """Render card selection for exchange with confirm button."""
         drawn_val = request.extra.get("drawn_card_value", "?")
-
-        # Auto-submit if a pending position was cached from decide_on_card_use
-        if self._pending_exchange_position is not None:
-            pos = self._pending_exchange_position
-            self._pending_exchange_position = None
-            ui.label(f"Exchanging card #{pos}...").classes(
-                "text-yellow-300 text-sm"
-            )
-            ui.timer(0.4, lambda: self._submit([pos]), once=True)
-            return
 
         ui.label(f"New card value: {drawn_val}").classes("text-yellow-300 text-sm mb-1")
         ui.label(
