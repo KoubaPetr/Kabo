@@ -197,8 +197,6 @@ class GameTable:
                 self._clickable_mode = "pick_turn_type"
             elif rt in ("pick_hand_cards_for_exchange", "pick_cards_to_see"):
                 self._clickable_mode = rt
-            elif rt == "decide_on_card_use":
-                self._clickable_mode = "decide_on_card_use"
             elif rt == "pick_position_for_new_card":
                 self._clickable_mode = "pick_position_for_new_card"
             elif rt == "specify_spying":
@@ -242,7 +240,6 @@ class GameTable:
         hand_clickable = self._clickable_mode in (
             "pick_hand_cards_for_exchange", "pick_cards_to_see",
             "pick_position_for_new_card", "specify_swap_own",
-            "decide_on_card_use",
         )
         cur_hand_count = len(web_player_view.cards) if web_player_view else 0
         hand_changed = (cur_hand_count != prev_hand_count and prev_hand_count > 0)
@@ -351,18 +348,6 @@ class GameTable:
         elif self._clickable_mode == "pick_position_for_new_card":
             self._clickable_mode = None
             self.action_panel._submit(position)
-        elif self._clickable_mode == "decide_on_card_use":
-            # Click hand card = KEEP + exchange this card (cached for next step)
-            self._clickable_mode = None
-            self.action_panel._pending_exchange_position = position
-            self.action_panel._container.clear()
-            with self.action_panel._container:
-                ui.label(f"Keeping card, exchanging #{position}...").classes(
-                    "text-yellow-300 font-bold"
-                )
-            self.action_panel._current_request = None
-            self.action_panel._selected_cards = []
-            self.action_panel._on_submit("KEEP")
         elif self._clickable_mode == "specify_swap_own":
             self.action_panel.select_swap_own(position)
 
