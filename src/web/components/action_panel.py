@@ -271,12 +271,14 @@ class ActionPanel:
             # (handled by checking self._selected_cards in _render_pick_hand_cards_for_exchange)
 
     def _toggle_peek_selection(self, pos: int, max_select: int) -> None:
+        added = False
         if pos in self._selected_cards:
             self._selected_cards.remove(pos)
         elif len(self._selected_cards) < max_select:
             self._selected_cards.append(pos)
+            added = True
         else:
-            # Replace last selection
+            # Replace last selection (user changing their mind)
             self._selected_cards[-1] = pos
 
         if hasattr(self, "_peek_confirm_btn") and self._peek_confirm_btn:
@@ -284,7 +286,13 @@ class ActionPanel:
                 f"Confirm ({len(self._selected_cards)}/{max_select} selected)"
             )
 
+        # Auto-confirm when a new card was added and we reached the target
+        if added and len(self._selected_cards) == max_select:
+            ui.timer(0.15, lambda: self._submit_peek(max_select), once=True)
+
     def _submit_peek(self, num_required: int) -> None:
+        if self._current_request is None:
+            return  # Already submitted
         if len(self._selected_cards) == num_required:
             self._submit(list(self._selected_cards))
         else:
@@ -299,7 +307,5 @@ class ActionPanel:
         self._selected_cards = []
         if self._game_table:
             self._game_table._clickable_mode = None
-        # Don't clear pending exchange position here — it's consumed by
-        # _render_pick_hand_cards_for_exchange on the next request
         self.show_waiting("Processing...")
         self._on_submit(response)
