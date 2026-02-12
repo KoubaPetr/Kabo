@@ -242,7 +242,9 @@ class WebPlayer(Player):
     def pick_turn_type(self, _round: Round = None) -> str:
         self._current_round = _round
         state = self._build_state_snapshot(_round)
-        options = ["HIT_DECK", "HIT_DISCARD_PILE"]
+        options = ["HIT_DECK"]
+        if _round.discard_pile:
+            options.append("HIT_DISCARD_PILE")
         if not _round.kabo_called:
             options.append("KABO")
         state.input_request = InputRequest(
