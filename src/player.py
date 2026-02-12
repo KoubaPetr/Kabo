@@ -86,8 +86,9 @@ class Player:
         :return: bool, representing whether the player called Kabo
         """
 
+        discard_top = _round.discard_pile[-1].value if _round.discard_pile else "empty"
         print(
-            f"Player {self.name}'s turn. {self.name}'s hand: {[str(c) for c in self.hand]}. Top of Discard Pile has {_round.discard_pile[-1].value}. "
+            f"Player {self.name}'s turn. {self.name}'s hand: {[str(c) for c in self.hand]}. Top of Discard Pile has {discard_top}. "
         )
         players_play_decision: str = self.pick_turn_type(_round=_round)
 
@@ -270,6 +271,10 @@ class Player:
         :param _round: Round, current round
         :return:
         """
+        if not _round.discard_pile:
+            print(f"  {self.name} tried to take from empty discard pile — drawing from deck instead.")
+            self.hit_deck(_round)
+            return
         _top_discarded_card: Card = _round.discard_pile.hit()
         # here we assume visible card is automatically kept
         self.keep_drawn_card(_top_discarded_card, _round)
