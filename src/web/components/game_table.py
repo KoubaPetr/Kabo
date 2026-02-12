@@ -130,6 +130,20 @@ class GameTable:
                 with ui.column().classes("w-48"):
                     self.scoreboard.build()
 
+    def _get_revealed_cards_map(self, state: GameStateSnapshot):
+        """Extract revealed card overrides from the current input request.
+
+        Returns a dict mapping (owner_name, position) -> value for cards
+        that should be temporarily shown face-up.
+        """
+        revealed = {}
+        if (state.input_request and
+                state.input_request.request_type in ("card_reveal", "initial_peek_reveal")):
+            for rc in state.input_request.extra.get("revealed_cards", []):
+                key = (rc["owner"], rc["position"])
+                revealed[key] = rc["value"]
+        return revealed
+
     def update_state(self, state: GameStateSnapshot) -> None:
         """Update the entire table from a game state snapshot."""
         if not self._main_container:
@@ -208,6 +222,9 @@ class GameTable:
         opponents_clickable = self._clickable_mode in (
             "specify_spying", "specify_swap_opponent"
         )
+        revealed_map = self._get_revealed_cards_map(state)
+        self._revealed_map = revealed_map
+
         if self._opponents_container:
             self._opponents_container.clear()
             with self._opponents_container:
@@ -216,6 +233,7 @@ class GameTable:
                     self._render_opponent_hand(
                         opp, clickable=opponents_clickable,
                         is_active_turn=is_active,
+                        revealed_map=revealed_map,
                     )
 
         # Render center (deck + discard)
@@ -250,8 +268,18 @@ class GameTable:
                     for card in web_player_view.cards:
                         selected = card.position in self.action_panel._selected_cards
                         anim = "animate-appear" if hand_changed else ""
+                        # Check for temporary reveal override
+                        display_card = card
+                        reveal_key = (web_player_view.name, card.position)
+                        if reveal_key in revealed_map:
+                            display_card = CardView(
+                                position=card.position,
+                                value=revealed_map[reveal_key],
+                                is_known=True,
+                                is_publicly_visible=False,
+                            )
                         render_card(
-                            card, size="normal",
+                            display_card, size="normal",
                             label=f"#{card.position}",
                             clickable=hand_clickable,
                             selected=selected,
@@ -295,8 +323,10 @@ class GameTable:
 
     def _render_opponent_hand(self, opponent: PlayerView,
                               clickable: bool = False,
-                              is_active_turn: bool = False) -> None:
+                              is_active_turn: bool = False,
+                              revealed_map: dict = None) -> None:
         """Render a single opponent's hand."""
+        revealed_map = revealed_map or {}
         border = (
             "border-2 border-yellow-400 rounded-lg p-2"
             if is_active_turn else "p-2"
@@ -316,14 +346,61 @@ class GameTable:
             ui.label(label_text).classes(label_cls)
             with ui.row().classes("gap-1"):
                 for card in opponent.cards:
+                    # Check for temporary reveal override (spy)
+                    display_card = card
+                    reveal_key = (opponent.name, card.position)
+                    if reveal_key in revealed_map:
+                        display_card = CardView(
+                            position=card.position,
+                            value=revealed_map[reveal_key],
+                            is_known=True,
+                            is_publicly_visible=False,
+                        )
                     render_card(
-                        card, size="small",
+                        display_card, size="small",
                         clickable=clickable,
                         on_click=(
                             lambda n=opponent.name, idx=card.position:
                                 self._on_opponent_card_click(n, idx)
                         ) if clickable else None,
                     )
+
+    def _rerender_player_hand(self, state: GameStateSnapshot) -> None:
+        """Re-render just the player's hand cards (for selection updates)."""
+        web_player_view = None
+        for p in state.players:
+            if p.is_current_player:
+                web_player_view = p
+                break
+        if not web_player_view or not self._player_hand_container:
+            return
+        hand_clickable = self._clickable_mode in (
+            "pick_hand_cards_for_exchange", "pick_cards_to_see",
+            "pick_position_for_new_card", "specify_swap_own",
+        )
+        revealed_map = getattr(self, "_revealed_map", {})
+        self._player_hand_container.clear()
+        with self._player_hand_container:
+            for card in web_player_view.cards:
+                selected = card.position in self.action_panel._selected_cards
+                display_card = card
+                reveal_key = (web_player_view.name, card.position)
+                if reveal_key in revealed_map:
+                    display_card = CardView(
+                        position=card.position,
+                        value=revealed_map[reveal_key],
+                        is_known=True,
+                        is_publicly_visible=False,
+                    )
+                render_card(
+                    display_card, size="normal",
+                    label=f"#{card.position}",
+                    clickable=hand_clickable,
+                    selected=selected,
+                    on_click=(
+                        lambda p=card.position: self._on_hand_card_click(p)
+                    ) if hand_clickable else None,
+                )
 
     def _on_deck_click(self) -> None:
         """Handle click on the deck - submit HIT_DECK."""
@@ -345,6 +422,9 @@ class GameTable:
                 num_to_see = self.action_panel._current_request.extra.get(
                     "num_cards_to_see", 1)
             self.action_panel._toggle_peek_selection(position, num_to_see)
+            # Re-render hand to show updated selection highlight
+            if self._last_state:
+                self._rerender_player_hand(self._last_state)
         elif self._clickable_mode == "pick_position_for_new_card":
             self._clickable_mode = None
             self.action_panel._submit(position)
@@ -369,6 +449,7 @@ class GameTable:
         opponents_clickable = self._clickable_mode in (
             "specify_spying", "specify_swap_opponent"
         )
+        revealed_map = getattr(self, "_revealed_map", {})
         if self._opponents_container:
             self._opponents_container.clear()
             with self._opponents_container:
@@ -377,6 +458,7 @@ class GameTable:
                     self._render_opponent_hand(
                         opp, clickable=opponents_clickable,
                         is_active_turn=is_active,
+                        revealed_map=revealed_map,
                     )
 
     def show_notification(self, notification: TurnNotification) -> None:

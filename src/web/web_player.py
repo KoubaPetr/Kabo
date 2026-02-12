@@ -442,13 +442,20 @@ class WebPlayer(Player):
             else:
                 self.event_bus.emit("log", "Memorize your starting cards!")
 
+        # Build revealed_cards for in-place display on game table
+        revealed_cards = [
+            {"owner": self.name, "position": kc["position"], "value": kc["value"]}
+            for kc in known_cards
+        ]
+
         # Action panel always shows actual card values for the viewing player
         state = self._build_state_snapshot(self._current_round)
         state.input_request = InputRequest(
             request_type="initial_peek_reveal",
             prompt=f"Your cards: [{', '.join(hand_display)}]. Memorize them!",
             options=["OK"],
-            extra={"known_cards": known_cards, "hand_display": hand_display},
+            extra={"known_cards": known_cards, "hand_display": hand_display,
+                   "revealed_cards": revealed_cards},
         )
         self._emit_input_request(state)
         self._wait_for_response()
@@ -468,13 +475,35 @@ class WebPlayer(Player):
         if self.event_bus:
             self.event_bus.emit("log", log_msg)
 
+        # Build revealed card info for in-place display on game table
+        revealed_cards = []
+        if effect == "PEAK":
+            try:
+                card_position = self.hand.index(card)
+            except ValueError:
+                card_position = -1
+            revealed_cards.append({
+                "owner": self.name, "position": card_position, "value": card.value,
+            })
+        else:  # SPY
+            owner = card.owner
+            if owner:
+                try:
+                    card_position = owner.hand.index(card)
+                except ValueError:
+                    card_position = -1
+                revealed_cards.append({
+                    "owner": owner.name, "position": card_position, "value": card.value,
+                })
+
         # Action panel always shows the actual card value for the viewing player
         state = self._build_state_snapshot(self._current_round)
         state.input_request = InputRequest(
             request_type="card_reveal",
             prompt=full_msg,
             options=["OK"],
-            extra={"value": card.value, "effect": effect},
+            extra={"value": card.value, "effect": effect,
+                   "revealed_cards": revealed_cards},
         )
         self._emit_input_request(state)
         self._wait_for_response()
