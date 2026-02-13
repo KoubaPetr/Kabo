@@ -337,7 +337,6 @@ class ActionPanel:
         """Submit the response and show waiting state."""
         self._current_request = None
         self._selected_cards = []
-        self._pre_selected_cards = None
         if self._game_table:
             self._game_table._clickable_mode = None
         self.show_waiting("Processing...")
