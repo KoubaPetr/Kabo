@@ -9,10 +9,11 @@ Layout:
   - Footer: Game log + Scoreboard
 """
 from nicegui import ui, app
-from typing import Optional
+from typing import Optional, List
 
 from src.web.game_state import (
     GameStateSnapshot, PlayerView, CardView, RoundSummary, TurnNotification,
+    AnimationEvent,
 )
 from src.web.components.card_component import render_card, render_card_back, render_deck, render_discard_pile
 from src.web.components.game_log import GameLog
@@ -47,6 +48,11 @@ class GameTable:
         # Highlight state for newly placed card after multi-exchange
         self._new_card_index: Optional[int] = None
         self._compaction_active: bool = False
+        # Animation queue
+        self._animation_queue: List[AnimationEvent] = []
+        self._animating: bool = False
+        self._pending_state: Optional[GameStateSnapshot] = None
+        self._animation_overlay = None
 
     def build(self) -> None:
         """Create the full game table layout."""
@@ -90,6 +96,164 @@ class GameTable:
         </style>
         """)
 
+        # JavaScript animation helpers
+        ui.add_head_html("""
+        <script>
+        window.kaboAnimations = {
+            _createOverlay() {
+                let ov = document.getElementById('kabo-anim-overlay');
+                if (!ov) {
+                    ov = document.createElement('div');
+                    ov.id = 'kabo-anim-overlay';
+                    ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+                    document.body.appendChild(ov);
+                }
+                return ov;
+            },
+            _createIcon(emoji, x, y, size) {
+                const el = document.createElement('div');
+                el.style.cssText = `position:absolute;left:${x}px;top:${y}px;font-size:${size}px;transform:translate(-50%,-50%) scale(0);transition:transform 0.3s ease-out, opacity 0.3s;opacity:0;z-index:10000;filter:drop-shadow(0 0 10px rgba(255,255,255,0.5));`;
+                el.textContent = emoji;
+                return el;
+            },
+            showEffectIcon(emoji, label, targetId, posIdx, durationMs) {
+                const ov = this._createOverlay();
+                const target = document.getElementById(targetId);
+                if (!target) { return; }
+                const cards = target.querySelectorAll('[class*="rounded-lg"]');
+                let rect;
+                if (cards.length > posIdx && posIdx >= 0) {
+                    rect = cards[posIdx].getBoundingClientRect();
+                } else {
+                    rect = target.getBoundingClientRect();
+                }
+                const cx = rect.left + rect.width/2;
+                const cy = rect.top + rect.height/2;
+                const icon = this._createIcon(emoji, cx, cy - 20, 48);
+                ov.appendChild(icon);
+                // Label below icon
+                const lbl = document.createElement('div');
+                lbl.style.cssText = `position:absolute;left:${cx}px;top:${cy + 25}px;transform:translate(-50%,0) scale(0);transition:transform 0.3s ease-out, opacity 0.3s;opacity:0;font-size:14px;font-weight:bold;color:white;text-shadow:0 0 8px rgba(0,0,0,0.8);white-space:nowrap;`;
+                lbl.textContent = label;
+                ov.appendChild(lbl);
+                requestAnimationFrame(() => {
+                    icon.style.transform = 'translate(-50%,-50%) scale(1)';
+                    icon.style.opacity = '1';
+                    lbl.style.transform = 'translate(-50%,0) scale(1)';
+                    lbl.style.opacity = '1';
+                });
+                setTimeout(() => {
+                    icon.style.transform = 'translate(-50%,-50%) scale(0)';
+                    icon.style.opacity = '0';
+                    lbl.style.transform = 'translate(-50%,0) scale(0)';
+                    lbl.style.opacity = '0';
+                    setTimeout(() => { icon.remove(); lbl.remove(); }, 400);
+                }, durationMs - 400);
+            },
+            showSpyLine(fromId, toId, posIdx, durationMs) {
+                const ov = this._createOverlay();
+                const from = document.getElementById(fromId);
+                const to = document.getElementById(toId);
+                if (!from || !to) return;
+                const fromRect = from.getBoundingClientRect();
+                const toCards = to.querySelectorAll('[class*="rounded-lg"]');
+                let toRect;
+                if (toCards.length > posIdx && posIdx >= 0) {
+                    toRect = toCards[posIdx].getBoundingClientRect();
+                } else {
+                    toRect = to.getBoundingClientRect();
+                }
+                const x1 = fromRect.left + fromRect.width/2;
+                const y1 = fromRect.top + fromRect.height/2;
+                const x2 = toRect.left + toRect.width/2;
+                const y2 = toRect.top + toRect.height/2;
+                const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+                svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
+                const line = document.createElementNS('http://www.w3.org/2000/svg','line');
+                line.setAttribute('x1',x1); line.setAttribute('y1',y1);
+                line.setAttribute('x2',x1); line.setAttribute('y2',y1);
+                line.setAttribute('stroke','#fbbf24'); line.setAttribute('stroke-width','3');
+                line.setAttribute('stroke-dasharray','8,4'); line.setAttribute('opacity','0.8');
+                line.style.transition = `all ${durationMs*0.3}ms ease-out`;
+                svg.appendChild(line);
+                ov.appendChild(svg);
+                requestAnimationFrame(() => {
+                    line.setAttribute('x2',x2); line.setAttribute('y2',y2);
+                });
+                setTimeout(() => {
+                    line.style.opacity = '0';
+                    setTimeout(() => svg.remove(), 400);
+                }, durationMs - 400);
+            },
+            showSwapArrows(hand1Id, pos1, hand2Id, pos2, durationMs) {
+                const ov = this._createOverlay();
+                const h1 = document.getElementById(hand1Id);
+                const h2 = document.getElementById(hand2Id);
+                if (!h1 || !h2) return;
+                const cards1 = h1.querySelectorAll('[class*="rounded-lg"]');
+                const cards2 = h2.querySelectorAll('[class*="rounded-lg"]');
+                let r1 = (cards1.length > pos1 && pos1 >= 0) ? cards1[pos1].getBoundingClientRect() : h1.getBoundingClientRect();
+                let r2 = (cards2.length > pos2 && pos2 >= 0) ? cards2[pos2].getBoundingClientRect() : h2.getBoundingClientRect();
+                const cx = (r1.left+r1.width/2 + r2.left+r2.width/2) / 2;
+                const cy = (r1.top+r1.height/2 + r2.top+r2.height/2) / 2;
+                const icon = this._createIcon('\\u21C4', cx, cy, 40);
+                icon.style.color = '#fbbf24';
+                ov.appendChild(icon);
+                requestAnimationFrame(() => {
+                    icon.style.transform = 'translate(-50%,-50%) scale(1) rotate(0deg)';
+                    icon.style.opacity = '1';
+                });
+                setTimeout(() => {
+                    icon.style.transform = 'translate(-50%,-50%) scale(1) rotate(360deg)';
+                }, 300);
+                setTimeout(() => {
+                    icon.style.transform = 'translate(-50%,-50%) scale(0)';
+                    icon.style.opacity = '0';
+                    setTimeout(() => icon.remove(), 400);
+                }, durationMs - 400);
+            },
+            showKaboCall(playerName, durationMs) {
+                const ov = this._createOverlay();
+                const el = document.createElement('div');
+                el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);font-size:64px;font-weight:bold;color:#ef4444;text-shadow:0 0 20px rgba(239,68,68,0.8),0 0 40px rgba(239,68,68,0.4);transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s;opacity:0;z-index:10001;white-space:nowrap;';
+                el.innerHTML = 'KABO!<br><span style="font-size:24px;color:white;">' + playerName + '</span>';
+                el.style.textAlign = 'center';
+                ov.appendChild(el);
+                requestAnimationFrame(() => {
+                    el.style.transform = 'translate(-50%,-50%) scale(1)';
+                    el.style.opacity = '1';
+                });
+                setTimeout(() => {
+                    el.style.transform = 'translate(-50%,-50%) scale(1.2)';
+                }, durationMs * 0.3);
+                setTimeout(() => {
+                    el.style.transform = 'translate(-50%,-50%) scale(0)';
+                    el.style.opacity = '0';
+                    setTimeout(() => el.remove(), 500);
+                }, durationMs - 500);
+            },
+            showDrawAnimation(fromId, toId, durationMs) {
+                const ov = this._createOverlay();
+                const from = document.getElementById(fromId);
+                const to = document.getElementById(toId);
+                if (!from || !to) return;
+                const fr = from.getBoundingClientRect();
+                const tr = to.getBoundingClientRect();
+                const card = document.createElement('div');
+                card.style.cssText = `position:absolute;left:${fr.left+fr.width/2-24}px;top:${fr.top+fr.height/2-32}px;width:48px;height:64px;background:#263238;border:2px solid #90a4ae;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#90a4ae;font-weight:bold;font-size:16px;transition:all ${durationMs*0.7}ms ease-in-out;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.5);`;
+                card.textContent = '?';
+                ov.appendChild(card);
+                requestAnimationFrame(() => {
+                    card.style.left = (tr.left+tr.width/2-24) + 'px';
+                    card.style.top = (tr.top+tr.height/2-32) + 'px';
+                    card.style.opacity = '0.7';
+                });
+                setTimeout(() => card.remove(), durationMs);
+            }
+        };
+        </script>
+        """)
+
         self._main_container = ui.column().classes(
             "w-full max-w-4xl mx-auto gap-4 p-4"
         )
@@ -120,6 +284,7 @@ class GameTable:
             self._center_container = ui.row().classes(
                 "w-full justify-center items-center gap-8"
             )
+            self._center_container.props('id="kabo-center"')
 
             ui.separator()
 
@@ -130,6 +295,7 @@ class GameTable:
             self._player_hand_container = ui.row().classes(
                 "w-full justify-center gap-3"
             )
+            self._player_hand_container.props('id="kabo-hand-self"')
 
             ui.separator()
 
@@ -161,6 +327,11 @@ class GameTable:
     def update_state(self, state: GameStateSnapshot) -> None:
         """Update the entire table from a game state snapshot."""
         if not self._main_container:
+            return
+
+        # Defer state updates while animations are playing
+        if self._animating:
+            self._pending_state = state
             return
 
         # Detect changes for animations
@@ -349,7 +520,9 @@ class GameTable:
             "border-2 border-yellow-400 rounded-lg p-2"
             if is_active_turn else "p-2"
         )
-        with ui.column().classes(f"items-center gap-1 {border}"):
+        hand_col = ui.column().classes(f"items-center gap-1 {border}")
+        hand_col.props(f'id="kabo-hand-{opponent.name}"')
+        with hand_col:
             label_text = opponent.name
             if opponent.character == "COMPUTER":
                 label_text += " (AI)"
@@ -588,6 +761,106 @@ class GameTable:
 
         # Update scoreboard
         self.scoreboard.update(state.players)
+
+    def _hand_id(self, player_name: str) -> str:
+        """Map a player name to its DOM ID, accounting for 'self' player."""
+        if self._last_state:
+            for p in self._last_state.players:
+                if p.is_current_player and p.name == player_name:
+                    return "kabo-hand-self"
+        return f"kabo-hand-{player_name}"
+
+    def enqueue_animation(self, event: AnimationEvent) -> None:
+        """Add an animation event to the queue and start playback."""
+        self._animation_queue.append(event)
+        if not self._animating:
+            self._play_next_animation()
+
+    def _play_next_animation(self) -> None:
+        """Play the next animation in the queue."""
+        if not self._animation_queue:
+            self._animating = False
+            if self._pending_state:
+                state = self._pending_state
+                self._pending_state = None
+                self.update_state(state)
+            return
+
+        self._animating = True
+        event = self._animation_queue.pop(0)
+
+        handler = getattr(self, f"_anim_{event.animation_type}", None)
+        if handler:
+            handler(event)
+        else:
+            # Unknown animation type, skip
+            ui.timer(0.1, self._play_next_animation, once=True)
+
+    def _anim_draw_deck(self, event: AnimationEvent) -> None:
+        hand_id = self._hand_id(event.player_name)
+        ui.run_javascript(
+            f'kaboAnimations.showDrawAnimation("kabo-deck", "{hand_id}", {event.duration_ms})'
+        )
+        ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
+
+    def _anim_draw_discard(self, event: AnimationEvent) -> None:
+        hand_id = self._hand_id(event.player_name)
+        ui.run_javascript(
+            f'kaboAnimations.showDrawAnimation("kabo-discard", "{hand_id}", {event.duration_ms})'
+        )
+        ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
+
+    def _anim_exchange(self, event: AnimationEvent) -> None:
+        hand_id = self._hand_id(event.player_name)
+        ui.run_javascript(
+            f'kaboAnimations.showDrawAnimation("{hand_id}", "kabo-discard", {event.duration_ms})'
+        )
+        ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
+
+    def _anim_discard(self, event: AnimationEvent) -> None:
+        ui.run_javascript(
+            f'kaboAnimations.showDrawAnimation("kabo-center", "kabo-discard", {event.duration_ms})'
+        )
+        ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
+
+    def _anim_peek(self, event: AnimationEvent) -> None:
+        hand_id = self._hand_id(event.player_name)
+        pos = event.card_positions[0] if event.card_positions else 0
+        ui.run_javascript(
+            f'kaboAnimations.showEffectIcon("\\ud83d\\udc41", "PEEK", "{hand_id}", {pos}, {event.duration_ms})'
+        )
+        ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
+
+    def _anim_spy(self, event: AnimationEvent) -> None:
+        spy_hand_id = self._hand_id(event.player_name)
+        target_hand_id = self._hand_id(event.target_player_name)
+        pos = event.target_positions[0] if event.target_positions else 0
+        ui.run_javascript(
+            f'kaboAnimations.showEffectIcon("\\ud83d\\udd75", "SPY: {event.player_name} \\u2192 {event.target_player_name}", "{target_hand_id}", {pos}, {event.duration_ms})'
+        )
+        ui.run_javascript(
+            f'kaboAnimations.showSpyLine("{spy_hand_id}", "{target_hand_id}", {pos}, {event.duration_ms})'
+        )
+        ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
+
+    def _anim_swap(self, event: AnimationEvent) -> None:
+        hand1_id = self._hand_id(event.player_name)
+        hand2_id = self._hand_id(event.target_player_name)
+        pos1 = event.card_positions[0] if event.card_positions else 0
+        pos2 = event.target_positions[0] if event.target_positions else 0
+        ui.run_javascript(
+            f'kaboAnimations.showEffectIcon("\\ud83d\\udd04", "SWAP", "kabo-center", 0, {event.duration_ms})'
+        )
+        ui.run_javascript(
+            f'kaboAnimations.showSwapArrows("{hand1_id}", {pos1}, "{hand2_id}", {pos2}, {event.duration_ms})'
+        )
+        ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
+
+    def _anim_kabo_call(self, event: AnimationEvent) -> None:
+        ui.run_javascript(
+            f'kaboAnimations.showKaboCall("{event.player_name}", {event.duration_ms})'
+        )
+        ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
 
     def show_game_over(self, state: GameStateSnapshot) -> None:
         """Show game over screen."""

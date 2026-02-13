@@ -17,7 +17,7 @@ from typing import Optional
 from src.web.event_bus import EventBus
 from src.web.game_session import GameSession
 from src.web.web_player import WebPlayer
-from src.web.game_state import GameStateSnapshot
+from src.web.game_state import GameStateSnapshot, AnimationEvent
 from src.web.game_room import (
     GameRoom, create_room, join_room, get_room, remove_room,
 )
@@ -84,6 +84,7 @@ class WebApp:
         bus.subscribe("game_over", lambda d: self._ui_queue.put(("game_over", d)))
         bus.subscribe("card_revealed", lambda d: self._ui_queue.put(("card_revealed", d)))
         bus.subscribe("notification", lambda n: self._ui_queue.put(("notification", n)))
+        bus.subscribe("animation", lambda a: self._ui_queue.put(("animation", a)))
 
     def submit_response(self, response) -> None:
         """Forward UI response to the WebPlayer."""
@@ -111,6 +112,8 @@ class WebApp:
                     self._on_card_revealed(data)
                 elif event_type == "notification":
                     self._on_notification(data)
+                elif event_type == "animation":
+                    self._on_animation(data)
             except Exception as e:
                 print(f"[WebApp] Error processing {event_type}: {e}")
 
@@ -138,6 +141,10 @@ class WebApp:
     def _on_notification(self, notification) -> None:
         if self.game_table:
             self.game_table.show_notification(notification)
+
+    def _on_animation(self, event: AnimationEvent) -> None:
+        if self.game_table:
+            self.game_table.enqueue_animation(event)
 
 
 def start_web_gui(port: int = 8080) -> None:

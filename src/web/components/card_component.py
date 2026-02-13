@@ -97,10 +97,11 @@ def render_deck(cards_left: int, clickable: bool = False, on_click=None) -> None
     """Render the draw deck with card count."""
     if cards_left == 0:
         with ui.column().classes("items-center"):
-            ui.element("div").classes(
+            el = ui.element("div").classes(
                 "w-16 h-22 rounded-lg border border-dashed border-gray-600 "
                 "flex items-center justify-center"
             ).style("background-color: transparent; color: #666;")
+            el.props('id="kabo-deck"')
             ui.label("Empty").classes("text-xs text-gray-500")
         return
 
@@ -110,6 +111,7 @@ def render_deck(cards_left: int, clickable: bool = False, on_click=None) -> None
             f"w-16 h-22 rounded-lg border border-gray-500 {cursor} shadow-md "
             f"flex flex-col items-center justify-center select-none"
         ).style("background-color: #263238; color: #90a4ae;")
+        deck_el.props('id="kabo-deck"')
 
         with deck_el:
             ui.label("DECK").classes("text-xs font-bold")
@@ -133,6 +135,7 @@ def render_discard_pile(top_value: int = None,
                 f"w-16 h-22 rounded-lg border border-gray-400 {cursor} shadow-md "
                 "flex flex-col items-center justify-center select-none"
             ).style(f"background-color: {bg_color}; color: white;")
+            card_el.props('id="kabo-discard"')
 
             with card_el:
                 ui.label(str(top_value)).classes("text-lg font-bold")
@@ -143,10 +146,11 @@ def render_discard_pile(top_value: int = None,
             if clickable and on_click:
                 card_el.on("click", lambda e, cb=on_click: cb())
         else:
-            ui.element("div").classes(
+            empty_el = ui.element("div").classes(
                 "w-16 h-22 rounded-lg border border-dashed border-gray-600 "
                 "flex items-center justify-center"
             ).style("background-color: transparent; color: #666;")
+            empty_el.props('id="kabo-discard"')
 
         ui.label("Discard").classes("text-xs text-gray-400")
         if clickable:
