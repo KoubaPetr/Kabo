@@ -451,12 +451,8 @@ def start_web_gui(port: int = 8080) -> None:
             app.storage.user.pop("player_name", None)
             ui.navigate.to("/")
 
-        join_path = f"/join/{_webapp.room.room_code}" if _webapp.room else ""
+        join_url = f"/join/{_webapp.room.room_code}" if _webapp.room else ""
 
-        req = ui.context.request
-        base = f"{req.url.scheme}://{req.url.netloc}"
-        join_url = base + join_path
-        
         with waiting_container:
             render_room_waiting_page(
                 room_code=_webapp.room.room_code,
