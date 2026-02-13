@@ -15,7 +15,7 @@ from src.round import Round
 from src.web.event_bus import EventBus
 from src.web.game_state import (
     GameStateSnapshot, PlayerView, CardView, InputRequest, RoundSummary,
-    TurnNotification,
+    TurnNotification, AnimationEvent,
 )
 
 P = TypeVar("P", bound=Player)
@@ -30,6 +30,7 @@ class WebPlayer(Player):
         self.event_bus: Optional[EventBus] = None
         self._current_round: Optional[Round] = None
         self._room = None  # GameRoom reference for multiplayer
+        self._last_new_card_position: Optional[int] = None
 
     def __hash__(self):
         return self.player_id
@@ -150,6 +151,21 @@ class WebPlayer(Player):
 
     # --- Notification broadcasting ---
 
+    def _broadcast_animation(self, event: AnimationEvent) -> None:
+        """Broadcast an animation event to all other players."""
+        if not self._room:
+            return
+        with self._room._lock:
+            others = {name: info for name, info in self._room.players.items()
+                      if name != self.name}
+        for name, info in others.items():
+            bus = info.get("event_bus")
+            if bus:
+                try:
+                    bus.emit("animation", event)
+                except Exception:
+                    pass
+
     def _broadcast_action(self, action_type: str, description: str,
                           extra: dict = None) -> None:
         """Broadcast an action notification to all other players."""
@@ -232,8 +248,20 @@ class WebPlayer(Player):
         if self._room:
             self._room.broadcast_state_to_others(self.name, _round)
         state = self._build_state_snapshot(_round)
+
+        extra = {}
+        if self._last_new_card_position is not None:
+            try:
+                new_idx = self.hand.index(drawn_card)
+                extra["new_card_index"] = new_idx
+                extra["compacted"] = True
+            except ValueError:
+                pass
+            self._last_new_card_position = None
+
         state.input_request = InputRequest(
-            request_type="waiting", prompt="Exchange complete.", options=[])
+            request_type="waiting", prompt="Exchange complete.", options=[],
+            extra=extra)
         if self.event_bus:
             self.event_bus.emit("state_update", state)
 
@@ -264,6 +292,18 @@ class WebPlayer(Player):
             "KABO": ("kabo", f"{self.name} calls KABO!"),
         }
         action_type, desc = action_map.get(response, ("unknown", f"{self.name} acts"))
+
+        # Broadcast animation event to other players
+        if response == "KABO":
+            self._broadcast_animation(AnimationEvent(
+                animation_type="kabo_call", player_name=self.name, duration_ms=2000))
+        elif response == "HIT_DECK":
+            self._broadcast_animation(AnimationEvent(
+                animation_type="draw_deck", player_name=self.name, duration_ms=800))
+        elif response == "HIT_DISCARD_PILE":
+            self._broadcast_animation(AnimationEvent(
+                animation_type="draw_discard", player_name=self.name, duration_ms=800))
+
         notification_type = "kabo_called" if response == "KABO" else "opponent_action"
         if self._room:
             notification = TurnNotification(
@@ -307,6 +347,17 @@ class WebPlayer(Player):
         }
         action_type, desc = decision_map.get(response, ("unknown", f"{self.name} acts"))
         self._broadcast_action(action_type, desc)
+
+        # Broadcast animation for discard/effect
+        if response == "DISCARD":
+            self._broadcast_animation(AnimationEvent(
+                animation_type="discard", player_name=self.name,
+                card_value=card.value, duration_ms=600))
+        elif response == "EFFECT":
+            self._broadcast_animation(AnimationEvent(
+                animation_type="discard", player_name=self.name,
+                card_value=card.value, duration_ms=600))
+
         return response
 
     def pick_hand_cards_for_exchange(self, drawn_card: Card) -> List[Card]:
@@ -333,20 +384,9 @@ class WebPlayer(Player):
     def pick_position_for_new_card(self, available_positions: List[int]) -> Optional[int]:
         if not available_positions:
             return None
-        if len(available_positions) == 1:
-            return available_positions[0]
-
-        state = self._build_state_snapshot(self._current_round)
-        state.input_request = InputRequest(
-            request_type="pick_position_for_new_card",
-            prompt="Click an empty slot in your hand to place the card:",
-            options=[str(p) for p in available_positions],
-        )
-        self._emit_input_request(state)
-        response = self._wait_for_response()
-        if response is None:
-            return available_positions[0]
-        return int(response)
+        chosen = max(available_positions)
+        self._last_new_card_position = chosen
+        return chosen
 
     def pick_cards_to_see(self, num_cards_to_see: int) -> List[int]:
         state = self._build_state_snapshot(self._current_round, phase="peek")
@@ -389,6 +429,10 @@ class WebPlayer(Player):
         print(f"  {self.name} spies on {opponent.name}'s card at position {response['card_idx']}.")
         self._broadcast_action(
             "spy", f"{self.name} spied on {opponent.name}'s card at position {response['card_idx']}")
+        self._broadcast_animation(AnimationEvent(
+            animation_type="spy", player_name=self.name,
+            target_player_name=opponent.name,
+            target_positions=[response["card_idx"]], duration_ms=1500))
         return opponent, card
 
     def specify_swap(self, _round: Round) -> Tuple[Type[P], int, int]:
@@ -421,6 +465,11 @@ class WebPlayer(Player):
               f"with {opponent.name}'s card (pos {response['opp_card_idx']}).")
         self._broadcast_action(
             "swap", f"{self.name} swapped a card with {opponent.name}")
+        self._broadcast_animation(AnimationEvent(
+            animation_type="swap", player_name=self.name,
+            target_player_name=opponent.name,
+            card_positions=[response["own_card_idx"]],
+            target_positions=[response["opp_card_idx"]], duration_ms=1500))
         return opponent, response["own_card_idx"], response["opp_card_idx"]
 
     def report_known_cards_on_hand(self) -> None:

@@ -13,7 +13,8 @@ def render_room_waiting_page(room_code: str, player_name: str,
                              is_host: bool,
                              get_room_info: Callable,
                              on_start: Callable,
-                             on_leave: Callable) -> ui.column:
+                             on_leave: Callable,
+                             join_url: str = "") -> ui.column:
     """Render the waiting room page.
 
     Args:
@@ -41,9 +42,27 @@ def render_room_waiting_page(room_code: str, player_name: str,
                 "tracking-widest select-all cursor-pointer"
             )
             code_label.tooltip("Click to select, then copy!")
-            ui.label("Share this code with your friends!").classes(
-                "text-xs text-gray-500 text-center w-full mt-1"
-            )
+            if join_url:
+                ui.label("Or share this link:").classes(
+                    "text-xs text-gray-500 text-center w-full mt-2"
+                )
+                with ui.row().classes("w-full items-center gap-1"):
+                    link_input = ui.input(value=join_url).classes(
+                        "flex-grow"
+                    ).props("outlined dense dark readonly")
+                    ui.button(
+                        icon="content_copy",
+                        on_click=lambda: (
+                            ui.run_javascript(
+                                f'navigator.clipboard.writeText(window.location.origin + "{join_url}")'
+                            ),
+                            ui.notify("Link copied!", type="positive"),
+                        ),
+                    ).props("flat dense").classes("text-yellow-300")
+            else:
+                ui.label("Share this code with your friends!").classes(
+                    "text-xs text-gray-500 text-center w-full mt-1"
+                )
 
         # Players list
         players_card = ui.card().classes("w-full p-4 mb-4")

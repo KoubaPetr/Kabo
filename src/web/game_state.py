@@ -59,6 +59,21 @@ class RoundSummary:
 
 
 @dataclass
+class AnimationEvent:
+    """Describes a visual animation that should play on all clients."""
+    animation_type: str  # "draw_deck", "draw_discard", "exchange", "discard",
+                         # "peek", "spy", "swap", "kabo_call"
+    player_name: str
+    target_player_name: str = ""
+    card_value: Optional[int] = None
+    card_positions: List[int] = field(default_factory=list)
+    target_positions: List[int] = field(default_factory=list)
+    discard_top_value: Optional[int] = None
+    extra: Dict = field(default_factory=dict)
+    duration_ms: int = 800
+
+
+@dataclass
 class GameStateSnapshot:
     """Complete snapshot of the game state as seen by a specific player."""
     phase: str  # "setup", "peek", "playing", "round_over", "game_over"

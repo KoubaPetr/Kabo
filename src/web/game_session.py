@@ -16,6 +16,7 @@ from src.game import Game
 from src.web.event_bus import EventBus
 from src.web.web_player import WebPlayer
 from src.computer_player import ComputerPlayer
+from src.web.animation_computer_player import AnimationAwareComputerPlayer
 
 
 class PrintInterceptor(io.TextIOBase):
@@ -63,10 +64,11 @@ class GameSession:
         self.web_player = WebPlayer(self.player_name)
         self.web_player.set_event_bus(self.event_bus)
 
-        # Create AI players
+        # Create AI players with animation support
         players = [self.web_player]
         for i in range(self.ai_count):
-            players.append(ComputerPlayer(f"AI_{i + 1}"))
+            players.append(AnimationAwareComputerPlayer(
+                f"AI_{i + 1}", event_buses=self._all_event_buses))
 
         # Reset counters for fresh game
         Card.reset_id_counter()
@@ -115,9 +117,12 @@ class GameSession:
 
         session._all_event_buses = all_event_buses
 
-        # Create AI players
+        # Create AI players with animation support
         for i in range(room.ai_count):
-            players.append(ComputerPlayer(f"AI_{i + 1}"))
+            ai = AnimationAwareComputerPlayer(
+                f"AI_{i + 1}", event_buses=all_event_buses)
+            ai._room = room
+            players.append(ai)
 
         # Reset counters for fresh game
         Card.reset_id_counter()
