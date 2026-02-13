@@ -50,21 +50,26 @@ def render_room_waiting_page(room_code: str, player_name: str,
                     link_input = ui.input(value=join_url).classes(
                         "flex-grow"
                     ).props("outlined dense dark readonly")
-                    link_input_id = f"link-input-{id(link_input)}"
-                    link_input.props(f'id="{link_input_id}"')
-                    ui.run_javascript(
-                        f'document.getElementById("{link_input_id}").querySelector("input")'
-                        f'.value = window.location.origin + "{join_url}"'
+
+                    async def _set_full_url():
+                        origin = await ui.run_javascript('window.location.origin')
+                        link_input.value = f'{origin}{join_url}'
+
+                    ui.timer(0.5, _set_full_url, once=True)
+
+                    copy_js = (
+                        'function(){var t=document.createElement("textarea");'
+                        't.value=window.location.origin+"' + join_url + '";'
+                        't.style.position="fixed";t.style.left="-9999px";'
+                        'document.body.appendChild(t);t.select();'
+                        'document.execCommand("copy");document.body.removeChild(t)}'
                     )
                     ui.button(
                         icon="content_copy",
-                        on_click=lambda: (
-                            ui.run_javascript(
-                                f'navigator.clipboard.writeText(window.location.origin + "{join_url}")'
-                            ),
-                            ui.notify("Link copied!", type="positive"),
-                        ),
-                    ).props("flat dense").classes("text-yellow-300")
+                    ).props("flat dense").classes("text-yellow-300").on(
+                        "click",
+                        js_handler=f'() => {{ ({copy_js})(); $emit("copied") }}',
+                    ).on("copied", lambda: ui.notify("Link copied!", type="positive"))
             else:
                 ui.label("Share this code with your friends!").classes(
                     "text-xs text-gray-500 text-center w-full mt-1"
