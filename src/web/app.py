@@ -452,6 +452,10 @@ def start_web_gui(port: int = 8080) -> None:
             ui.navigate.to("/")
 
         join_path = f"/join/{_webapp.room.room_code}" if _webapp.room else ""
+
+        req = ui.context.request
+        base = f"{req.url.scheme}://{req.url.netloc}"
+        join_url = base + join_path
         
         with waiting_container:
             render_room_waiting_page(
@@ -461,7 +465,7 @@ def start_web_gui(port: int = 8080) -> None:
                 get_room_info=get_room_info,
                 on_start=on_start,
                 on_leave=on_leave,
-                join_url=join_path,
+                join_url=join_url,
             )
 
         # For non-host players: poll room state to detect game start

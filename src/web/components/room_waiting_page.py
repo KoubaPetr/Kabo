@@ -47,48 +47,18 @@ def render_room_waiting_page(room_code: str, player_name: str,
                     "text-xs text-gray-500 text-center w-full mt-2"
                 )
                 with ui.row().classes("w-full items-center gap-1"):
-                    link_input = ui.input(value=join_url).classes("flex-grow").props("outlined dense dark readonly")
-
+                    link_input = ui.input(value=join_url).classes(
+                        "flex-grow"
+                    ).props("outlined dense dark readonly")
                     ui.button(
                         icon="content_copy",
-                        on_click=lambda: ui.run_javascript(f"""
-                        (async () => {{
-                            const text = "{join_url}";
-                            try {{
-                            await navigator.clipboard.writeText(text);
-                            return true;
-                            }} catch (e) {{
-                            const ta = document.createElement('textarea');
-                            ta.value = text;
-                            ta.style.position = 'fixed';
-                            ta.style.opacity = '0';
-                            document.body.appendChild(ta);
-                            ta.focus();
-                            ta.select();
-                            try {{
-                                const ok = document.execCommand('copy');
-                                document.body.removeChild(ta);
-                                return ok;
-                            }} catch (e2) {{
-                                document.body.removeChild(ta);
-                                return false;
-                            }}
-                            }}
-                        }})()
-                        """).then(lambda ok: ui.notify("Link copied!" if ok else "Copy failed.", type="positive" if ok else "negative"))
+                        on_click=lambda: (
+                            ui.run_javascript(
+                                f'navigator.clipboard.writeText(window.location.origin + "{join_url}")'
+                            ),
+                            ui.notify("Link copied!", type="positive"),
+                        ),
                     ).props("flat dense").classes("text-yellow-300")
-                    # link_input = ui.input(value=join_url).classes(
-                    #     "flex-grow"
-                    # ).props("outlined dense dark readonly")
-                    # ui.button(
-                    #     icon="content_copy",
-                    #     on_click=lambda: (
-                    #         ui.run_javascript(
-                    #             f'navigator.clipboard.writeText(window.location.origin + "{join_url}")'
-                    #         ),
-                    #         ui.notify("Link copied!", type="positive"),
-                    #     ),
-                    # ).props("flat dense").classes("text-yellow-300")
             else:
                 ui.label("Share this code with your friends!").classes(
                     "text-xs text-gray-500 text-center w-full mt-1"
