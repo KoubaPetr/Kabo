@@ -44,19 +44,24 @@ continue game logic...
 ### Web GUI (`src/web/`)
 | File | Purpose |
 |------|---------|
-| `app.py` | NiceGUI entry point, cross-thread event handling, dark mode |
+| `app.py` | NiceGUI entry point, cross-thread event handling, routes (`/` and `/join/{code}`) |
 | `event_bus.py` | Thread-safe pub/sub for game-to-UI events |
-| `game_state.py` | Dataclasses: `GameStateSnapshot`, `PlayerView`, `CardView`, `InputRequest` |
+| `game_state.py` | Dataclasses: `GameStateSnapshot`, `PlayerView`, `CardView`, `InputRequest`, `AnimationEvent` |
 | `game_session.py` | Manages game in daemon thread, `PrintInterceptor` captures stdout |
 | `web_player.py` | Bridges sync game thread with async NiceGUI via queues |
+| `animation_computer_player.py` | ComputerPlayer subclass that emits `AnimationEvent`s with sleeps for UI playback |
+| `game_room.py` | Multiplayer room management, state broadcasting |
 
 ### Web Components (`src/web/components/`)
 | File | Purpose |
 |------|---------|
 | `setup_page.py` | Initial form: player name + AI count slider |
-| `game_table.py` | Main layout: opponents, deck/discard, player hand, action panel, log |
-| `action_panel.py` | Dynamic controls for 7+ input request types |
-| `card_component.py` | HTML/CSS card rendering with Tailwind, color-coded by value |
+| `lobby_page.py` | Landing page: solo play, create room, join room |
+| `join_page.py` | Simplified join page for `/join/{room_code}` URL-based joining |
+| `room_waiting_page.py` | Pre-game waiting room with shareable join URL |
+| `game_table.py` | Main layout: opponents, deck/discard, player hand, action panel, log, animation queue |
+| `action_panel.py` | Dynamic controls for 7+ input request types, implicit keep via card click |
+| `card_component.py` | HTML/CSS card rendering with Tailwind, color-coded by value, DOM IDs for animations |
 | `game_log.py` | Scrollable log (200-message limit, auto-scroll) |
 | `scoreboard.py` | Player scores sorted ascending, highlights current player |
 
