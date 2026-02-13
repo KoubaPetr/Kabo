@@ -24,6 +24,7 @@ from src.web.game_room import (
 from src.web.components.setup_page import render_setup_page
 from src.web.components.lobby_page import render_lobby_page
 from src.web.components.room_waiting_page import render_room_waiting_page
+from src.web.components.join_page import render_join_page
 from src.web.components.game_table import GameTable
 
 
@@ -296,6 +297,116 @@ def start_web_gui(port: int = 8080) -> None:
                 on_join_room=on_join_room,
             )
 
+    @ui.page("/join/{room_code}")
+    def join_page(room_code: str):
+        _webapp = WebApp()
+
+        ui.dark_mode().enable()
+        ui.query("body").style("background-color: #1a1a2e;")
+
+        main = ui.column().classes("w-full min-h-screen items-center")
+
+        with main:
+            lobby_container = ui.column().classes("w-full items-center")
+            waiting_container = ui.column().classes("w-full items-center hidden")
+            game_container = ui.column().classes("w-full items-center hidden")
+
+        ui.timer(0.1, _webapp.process_ui_events)
+
+        # Check for reconnection
+        stored_room = app.storage.user.get("room_code")
+        stored_name = app.storage.user.get("player_name")
+
+        if stored_room and stored_name:
+            room = get_room(stored_room)
+            if room and room.state == "playing":
+                _webapp.room = room
+                _webapp.player_name = stored_name
+                _webapp.event_bus = EventBus()
+                _webapp._subscribe_to_bus(_webapp.event_bus)
+                try:
+                    room.reconnect_player(stored_name, _webapp.event_bus)
+                except ValueError:
+                    app.storage.user.pop("room_code", None)
+                    app.storage.user.pop("player_name", None)
+                else:
+                    _webapp.connect_to_room_game()
+                    lobby_container.classes(add="hidden")
+                    game_container.classes(remove="hidden")
+                    with game_container:
+                        _webapp.game_table = GameTable(
+                            on_submit=_webapp.submit_response
+                        )
+                        _webapp.game_table.build()
+                    _webapp.game_table.action_panel.show_waiting(
+                        "Reconnected! Waiting for your turn..."
+                    )
+                    return
+            elif room and room.state == "waiting":
+                _webapp.room = room
+                _webapp.player_name = stored_name
+                _webapp.is_host = (room.host_name == stored_name.upper())
+                _webapp.event_bus = EventBus()
+                _webapp._subscribe_to_bus(_webapp.event_bus)
+                uname = stored_name.upper()
+                if uname not in room.players:
+                    try:
+                        room.add_player(stored_name, _webapp.event_bus)
+                    except ValueError:
+                        app.storage.user.pop("room_code", None)
+                        app.storage.user.pop("player_name", None)
+                    else:
+                        _show_waiting_room(
+                            _webapp, lobby_container, waiting_container,
+                            game_container
+                        )
+                        return
+                else:
+                    room.reconnect_player(stored_name, _webapp.event_bus)
+                    _show_waiting_room(
+                        _webapp, lobby_container, waiting_container,
+                        game_container
+                    )
+                    return
+            else:
+                app.storage.user.pop("room_code", None)
+                app.storage.user.pop("player_name", None)
+
+        # Validate the room
+        code = room_code.upper()
+        room = get_room(code)
+        room_info = None
+        if room and room.state == "waiting":
+            room_info = {
+                "players": room.get_player_names(),
+                "max_players": room.max_players,
+                "host_name": room.host_name,
+            }
+
+        def on_join_room(player_name: str, code: str):
+            try:
+                _webapp.event_bus = EventBus()
+                _webapp._subscribe_to_bus(_webapp.event_bus)
+                r = join_room(code, player_name, _webapp.event_bus)
+                _webapp.room = r
+                _webapp.player_name = player_name
+                _webapp.is_host = False
+                app.storage.user["room_code"] = r.room_code
+                app.storage.user["player_name"] = player_name
+                _show_waiting_room(
+                    _webapp, lobby_container, waiting_container,
+                    game_container
+                )
+            except ValueError as e:
+                ui.notify(str(e), type="negative")
+
+        with lobby_container:
+            render_join_page(
+                room_code=code,
+                on_join=on_join_room,
+                room_info=room_info,
+            )
+
     def _show_waiting_room(_webapp: WebApp, lobby_container,
                            waiting_container, game_container):
         """Transition to the waiting room view."""
@@ -333,6 +444,8 @@ def start_web_gui(port: int = 8080) -> None:
             app.storage.user.pop("player_name", None)
             ui.navigate.to("/")
 
+        join_url = f"/join/{_webapp.room.room_code}" if _webapp.room else ""
+
         with waiting_container:
             render_room_waiting_page(
                 room_code=_webapp.room.room_code,
@@ -341,6 +454,7 @@ def start_web_gui(port: int = 8080) -> None:
                 get_room_info=get_room_info,
                 on_start=on_start,
                 on_leave=on_leave,
+                join_url=join_url,
             )
 
         # For non-host players: poll room state to detect game start
