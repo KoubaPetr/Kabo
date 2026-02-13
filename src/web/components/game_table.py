@@ -209,6 +209,8 @@ class GameTable:
             rt = state.input_request.request_type
             if rt == "pick_turn_type":
                 self._clickable_mode = "pick_turn_type"
+            elif rt == "decide_on_card_use":
+                self._clickable_mode = "decide_on_card_use"
             elif rt in ("pick_hand_cards_for_exchange", "pick_cards_to_see"):
                 self._clickable_mode = rt
             elif rt == "pick_position_for_new_card":
@@ -256,6 +258,7 @@ class GameTable:
 
         # Render player's hand
         hand_clickable = self._clickable_mode in (
+            "decide_on_card_use",
             "pick_hand_cards_for_exchange", "pick_cards_to_see",
             "pick_position_for_new_card", "specify_swap_own",
         )
@@ -375,6 +378,7 @@ class GameTable:
         if not web_player_view or not self._player_hand_container:
             return
         hand_clickable = self._clickable_mode in (
+            "decide_on_card_use",
             "pick_hand_cards_for_exchange", "pick_cards_to_see",
             "pick_position_for_new_card", "specify_swap_own",
         )
@@ -414,8 +418,14 @@ class GameTable:
 
     def _on_hand_card_click(self, position: int) -> None:
         """Handle click on a hand card - toggle selection or submit position."""
-        if self._clickable_mode == "pick_hand_cards_for_exchange":
+        if self._clickable_mode == "decide_on_card_use":
+            self.action_panel._toggle_card_selection_for_keep(position)
+            if self._last_state:
+                self._rerender_player_hand(self._last_state)
+        elif self._clickable_mode == "pick_hand_cards_for_exchange":
             self.action_panel._toggle_card_selection(position)
+            if self._last_state:
+                self._rerender_player_hand(self._last_state)
         elif self._clickable_mode == "pick_cards_to_see":
             num_to_see = 1
             if self.action_panel._current_request:

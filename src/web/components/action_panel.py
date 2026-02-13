@@ -20,6 +20,7 @@ class ActionPanel:
         self._container = None
         self._current_request: Optional[InputRequest] = None
         self._selected_cards: List[int] = []
+        self._pre_selected_cards: Optional[List[int]] = None
         self._game_table = None  # Set by GameTable.build()
 
     def build(self) -> None:
@@ -53,6 +54,15 @@ class ActionPanel:
         self._current_request = request
         if reset_selection:
             self._selected_cards = []
+
+        # Auto-submit pre-selected cards from the implicit keep flow
+        if (request.request_type == "pick_hand_cards_for_exchange"
+                and self._pre_selected_cards is not None):
+            pre_selected = self._pre_selected_cards
+            self._pre_selected_cards = None
+            self._submit(pre_selected)
+            return
+
         self._container.clear()
 
         with self._container:
@@ -76,20 +86,20 @@ class ActionPanel:
                 ).props("color=negative").classes("text-sm")
 
     def _render_decide_on_card_use(self, request: InputRequest) -> None:
-        """Render discard/effect buttons + click-hand-to-keep for a drawn card."""
+        """Render drawn card + click-hand-to-keep flow (no Keep button)."""
         drawn_val = request.extra.get("drawn_card_value", "?")
         drawn_eff = request.extra.get("drawn_card_effect")
 
         with ui.row().classes("items-center gap-4"):
-            # Show the drawn card
             from src.web.components.card_component import CardView as CV, render_card
             render_card(CV(position=0, value=drawn_val, is_known=True,
                           is_publicly_visible=False), size="normal")
 
+        ui.label(
+            "Click card(s) in your hand to keep this card, or use buttons below"
+        ).classes("text-xs text-gray-400 mb-1 italic")
+
         with ui.row().classes("gap-2 mt-2"):
-            ui.button("Keep", on_click=lambda: self._submit("KEEP")).props(
-                "color=positive"
-            )
             ui.button("Discard", on_click=lambda: self._submit("DISCARD")).props(
                 "color=negative"
             )
@@ -99,6 +109,15 @@ class ActionPanel:
                     effect_labels.get(drawn_eff, f"Effect ({drawn_eff})"),
                     on_click=lambda: self._submit("EFFECT"),
                 ).props("color=warning")
+
+        if self._selected_cards:
+            ui.label(
+                f"Selected for exchange: {', '.join(f'#{p}' for p in self._selected_cards)}"
+            ).classes("text-sm text-yellow-300 mt-1")
+            ui.button(
+                "Confirm Exchange",
+                on_click=self._submit_keep_and_exchange,
+            ).props("color=positive").classes("mt-2")
 
     def _render_pick_hand_cards_for_exchange(self, request: InputRequest) -> None:
         """Render card selection for exchange with confirm button."""
@@ -259,16 +278,29 @@ class ActionPanel:
                     on_click=lambda e, o=option: self._submit(o),
                 ).classes("text-sm")
 
+    def _toggle_card_selection_for_keep(self, pos: int) -> None:
+        """Toggle card selection during decide_on_card_use (implicit Keep mode)."""
+        if pos in self._selected_cards:
+            self._selected_cards.remove(pos)
+        else:
+            self._selected_cards.append(pos)
+        if self._current_request:
+            self.show_request(self._current_request, reset_selection=False)
+
+    def _submit_keep_and_exchange(self) -> None:
+        """Submit KEEP and stash selected cards for the exchange phase."""
+        if not self._selected_cards:
+            return
+        self._pre_selected_cards = list(self._selected_cards)
+        self._submit("KEEP")
+
     def _toggle_card_selection(self, pos: int) -> None:
         if pos in self._selected_cards:
             self._selected_cards.remove(pos)
         else:
             self._selected_cards.append(pos)
-        # Re-render the exchange panel (preserve current selection)
         if self._current_request:
             self.show_request(self._current_request, reset_selection=False)
-            # Restore selection state visually
-            # (handled by checking self._selected_cards in _render_pick_hand_cards_for_exchange)
 
     def _toggle_peek_selection(self, pos: int, max_select: int) -> None:
         added = False
@@ -305,6 +337,7 @@ class ActionPanel:
         """Submit the response and show waiting state."""
         self._current_request = None
         self._selected_cards = []
+        self._pre_selected_cards = None
         if self._game_table:
             self._game_table._clickable_mode = None
         self.show_waiting("Processing...")
