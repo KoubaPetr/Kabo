@@ -50,6 +50,12 @@ def render_room_waiting_page(room_code: str, player_name: str,
                     link_input = ui.input(value=join_url).classes(
                         "flex-grow"
                     ).props("outlined dense dark readonly")
+                    link_input_id = f"link-input-{id(link_input)}"
+                    link_input.props(f'id="{link_input_id}"')
+                    ui.run_javascript(
+                        f'document.getElementById("{link_input_id}").querySelector("input")'
+                        f'.value = window.location.origin + "{join_url}"'
+                    )
                     ui.button(
                         icon="content_copy",
                         on_click=lambda: (
