@@ -44,6 +44,9 @@ class GameTable:
         # Click-to-interact state
         self._clickable_mode: Optional[str] = None
         self._last_state: Optional[GameStateSnapshot] = None
+        # Highlight state for newly placed card after multi-exchange
+        self._new_card_index: Optional[int] = None
+        self._compaction_active: bool = False
 
     def build(self) -> None:
         """Create the full game table layout."""
@@ -68,10 +71,21 @@ class GameTable:
             50% { transform: scale(1.1); }
             100% { transform: scale(1); opacity: 1; }
         }
+        @keyframes newCardGlow {
+            0% { box-shadow: 0 0 5px #fbbf24, 0 0 10px #fbbf24; border-color: #fbbf24; }
+            50% { box-shadow: 0 0 15px #fbbf24, 0 0 30px #f59e0b; border-color: #f59e0b; }
+            100% { box-shadow: 0 0 5px #fbbf24, 0 0 10px #fbbf24; border-color: #fbbf24; }
+        }
+        @keyframes slideCompact {
+            0% { transform: translateX(20px); opacity: 0.7; }
+            100% { transform: translateX(0); opacity: 1; }
+        }
         .animate-draw { animation: slideFromDeck 0.4s ease-out; }
         .animate-discard { animation: slideToDiscard 0.3s ease-in; }
         .animate-flip { animation: flipCard 0.5s ease-in-out; }
         .animate-appear { animation: cardAppear 0.3s ease-out; }
+        .animate-new-card { animation: newCardGlow 1.5s ease-in-out 3; border: 2px solid #fbbf24 !important; }
+        .animate-compact { animation: slideCompact 0.4s ease-out; }
         .card-hover:hover { transform: translateY(-4px); transition: transform 0.15s ease; }
         </style>
         """)
@@ -158,6 +172,15 @@ class GameTable:
                     break
         self._last_state = state
 
+        # Detect new card placement highlight from multi-exchange
+        if (state.input_request and
+                state.input_request.extra.get("compacted")):
+            self._new_card_index = state.input_request.extra.get("new_card_index")
+            self._compaction_active = True
+        else:
+            self._new_card_index = None
+            self._compaction_active = False
+
         # Handle round_over phase with summary display
         if state.phase == "round_over" and state.round_summary:
             self._show_round_summary(state)
@@ -213,8 +236,6 @@ class GameTable:
                 self._clickable_mode = "decide_on_card_use"
             elif rt in ("pick_hand_cards_for_exchange", "pick_cards_to_see"):
                 self._clickable_mode = rt
-            elif rt == "pick_position_for_new_card":
-                self._clickable_mode = "pick_position_for_new_card"
             elif rt == "specify_spying":
                 self._clickable_mode = "specify_spying"
             elif rt == "specify_swap":
@@ -260,7 +281,7 @@ class GameTable:
         hand_clickable = self._clickable_mode in (
             "decide_on_card_use",
             "pick_hand_cards_for_exchange", "pick_cards_to_see",
-            "pick_position_for_new_card", "specify_swap_own",
+            "specify_swap_own",
         )
         cur_hand_count = len(web_player_view.cards) if web_player_view else 0
         hand_changed = (cur_hand_count != prev_hand_count and prev_hand_count > 0)
@@ -268,9 +289,16 @@ class GameTable:
             self._player_hand_container.clear()
             with self._player_hand_container:
                 if web_player_view:
-                    for card in web_player_view.cards:
+                    for idx, card in enumerate(web_player_view.cards):
                         selected = card.position in self.action_panel._selected_cards
-                        anim = "animate-appear" if hand_changed else ""
+                        if self._new_card_index is not None and idx == self._new_card_index:
+                            anim = "animate-new-card"
+                        elif self._compaction_active:
+                            anim = "animate-compact"
+                        elif hand_changed:
+                            anim = "animate-appear"
+                        else:
+                            anim = ""
                         # Check for temporary reveal override
                         display_card = card
                         reveal_key = (web_player_view.name, card.position)
@@ -291,19 +319,6 @@ class GameTable:
                                 lambda p=card.position: self._on_hand_card_click(p)
                             ) if hand_clickable else None,
                         )
-                    # Show empty slot placeholders for pick_position_for_new_card
-                    if self._clickable_mode == "pick_position_for_new_card":
-                        available = state.input_request.options if state.input_request else []
-                        existing_positions = {c.position for c in web_player_view.cards}
-                        for pos_str in available:
-                            pos = int(pos_str)
-                            if pos not in existing_positions:
-                                render_card_back(
-                                    size="normal",
-                                    label=f"#{pos} (empty)",
-                                    clickable=True,
-                                    on_click=lambda p=pos: self._on_hand_card_click(p),
-                                )
 
         # Update player hand label with turn indicator
         is_my_turn = (
@@ -380,7 +395,7 @@ class GameTable:
         hand_clickable = self._clickable_mode in (
             "decide_on_card_use",
             "pick_hand_cards_for_exchange", "pick_cards_to_see",
-            "pick_position_for_new_card", "specify_swap_own",
+            "specify_swap_own",
         )
         revealed_map = getattr(self, "_revealed_map", {})
         self._player_hand_container.clear()
@@ -435,9 +450,6 @@ class GameTable:
             # Re-render hand to show updated selection highlight
             if self._last_state:
                 self._rerender_player_hand(self._last_state)
-        elif self._clickable_mode == "pick_position_for_new_card":
-            self._clickable_mode = None
-            self.action_panel._submit(position)
         elif self._clickable_mode == "specify_swap_own":
             self.action_panel.select_swap_own(position)
 

@@ -30,6 +30,7 @@ class WebPlayer(Player):
         self.event_bus: Optional[EventBus] = None
         self._current_round: Optional[Round] = None
         self._room = None  # GameRoom reference for multiplayer
+        self._last_new_card_position: Optional[int] = None
 
     def __hash__(self):
         return self.player_id
@@ -232,8 +233,20 @@ class WebPlayer(Player):
         if self._room:
             self._room.broadcast_state_to_others(self.name, _round)
         state = self._build_state_snapshot(_round)
+
+        extra = {}
+        if self._last_new_card_position is not None:
+            try:
+                new_idx = self.hand.index(drawn_card)
+                extra["new_card_index"] = new_idx
+                extra["compacted"] = True
+            except ValueError:
+                pass
+            self._last_new_card_position = None
+
         state.input_request = InputRequest(
-            request_type="waiting", prompt="Exchange complete.", options=[])
+            request_type="waiting", prompt="Exchange complete.", options=[],
+            extra=extra)
         if self.event_bus:
             self.event_bus.emit("state_update", state)
 
@@ -333,20 +346,9 @@ class WebPlayer(Player):
     def pick_position_for_new_card(self, available_positions: List[int]) -> Optional[int]:
         if not available_positions:
             return None
-        if len(available_positions) == 1:
-            return available_positions[0]
-
-        state = self._build_state_snapshot(self._current_round)
-        state.input_request = InputRequest(
-            request_type="pick_position_for_new_card",
-            prompt="Click an empty slot in your hand to place the card:",
-            options=[str(p) for p in available_positions],
-        )
-        self._emit_input_request(state)
-        response = self._wait_for_response()
-        if response is None:
-            return available_positions[0]
-        return int(response)
+        chosen = max(available_positions)
+        self._last_new_card_position = chosen
+        return chosen
 
     def pick_cards_to_see(self, num_cards_to_see: int) -> List[int]:
         state = self._build_state_snapshot(self._current_round, phase="peek")
