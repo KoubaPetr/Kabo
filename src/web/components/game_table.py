@@ -105,14 +105,14 @@ class GameTable:
                 if (!ov) {
                     ov = document.createElement('div');
                     ov.id = 'kabo-anim-overlay';
-                    ov.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:9999;';
+                    ov.style.cssText = 'position:fixed;top:0;left:0;width:100vw;height:100vh;pointer-events:none;z-index:9999;overflow:visible;';
                     document.body.appendChild(ov);
                 }
                 return ov;
             },
             _getCardRect(handId, posIdx) {
                 const el = document.getElementById(handId);
-                if (!el) return null;
+                if (!el) { console.warn('[KABO] _getCardRect: no element', handId); return null; }
                 const cards = el.querySelectorAll('[class*="rounded-lg"]');
                 if (cards.length > posIdx && posIdx >= 0) {
                     return cards[posIdx].getBoundingClientRect();
@@ -121,6 +121,7 @@ class GameTable:
             },
             _getElRect(id) {
                 const el = document.getElementById(id);
+                if (!el) { console.warn('[KABO] _getElRect: no element', id); }
                 return el ? el.getBoundingClientRect() : null;
             },
             _createCardEl(x, y, w, h, faceUp, cardValue) {
@@ -129,8 +130,8 @@ class GameTable:
                 const border = faceUp ? '#42a5f5' : '#90a4ae';
                 const content = faceUp && cardValue != null ? cardValue : '?';
                 const textColor = faceUp ? '#fff' : '#90a4ae';
-                const fontSize = faceUp ? Math.max(14, h * 0.35) : Math.max(12, h * 0.3);
-                card.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:${bg};border:2px solid ${border};border-radius:8px;display:flex;align-items:center;justify-content:center;color:${textColor};font-weight:bold;font-size:${fontSize}px;z-index:10000;box-shadow:0 4px 16px rgba(0,0,0,0.6);pointer-events:none;`;
+                const fontSize = faceUp ? Math.max(16, h * 0.35) : Math.max(14, h * 0.3);
+                card.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:${bg};border:3px solid ${border};border-radius:8px;display:flex;align-items:center;justify-content:center;color:${textColor};font-weight:bold;font-size:${fontSize}px;z-index:10000;box-shadow:0 4px 16px rgba(0,0,0,0.6);pointer-events:none;transition:none;`;
                 card.textContent = content;
                 return card;
             },
@@ -146,90 +147,81 @@ class GameTable:
                 lbl.textContent = text;
                 return lbl;
             },
+            /* Force the browser to compute styles before we add transitions.
+               Without this, Safari (and sometimes Chrome) batches the initial
+               position and the transition together, skipping the animation. */
+            _forceReflow(el) {
+                void el.offsetHeight;
+            },
 
             showDrawAnimation(fromId, toId, cardValue, durationMs) {
+                console.log('[KABO] showDrawAnimation', fromId, toId, cardValue, durationMs);
                 const ov = this._createOverlay();
                 const fr = this._getElRect(fromId);
                 const tr = this._getElRect(toId);
                 if (!fr || !tr) return;
-                const cw = 56, ch = 76;
+                const cw = 60, ch = 80;
                 const sx = fr.left + fr.width/2 - cw/2;
                 const sy = fr.top + fr.height/2 - ch/2;
                 const ex = tr.left + tr.width/2 - cw/2;
                 const ey = tr.top + tr.height/2 - ch/2;
                 const faceUp = cardValue != null;
                 const card = this._createCardEl(sx, sy, cw, ch, faceUp, cardValue);
-                card.style.transition = 'none';
-                card.style.transform = 'scale(0.5)';
-                card.style.opacity = '0';
                 ov.appendChild(card);
-                // Trail glow
-                const trail = document.createElement('div');
-                trail.style.cssText = `position:absolute;left:${sx}px;top:${sy}px;width:${cw}px;height:${ch}px;border-radius:8px;background:transparent;box-shadow:0 0 20px rgba(251,191,36,0.6);z-index:9999;transition:none;opacity:0;pointer-events:none;`;
-                ov.appendChild(trail);
+                // Force browser to lay out the element at its initial position
+                this._forceReflow(card);
+                // Now enable transition and animate
                 const travelTime = durationMs * 0.65;
-                requestAnimationFrame(() => {
-                    card.style.transition = `left ${travelTime}ms cubic-bezier(0.25,0.1,0.25,1), top ${travelTime}ms cubic-bezier(0.25,0.1,0.25,1), transform ${travelTime}ms ease, opacity 0.2s ease`;
-                    trail.style.transition = `left ${travelTime}ms cubic-bezier(0.25,0.1,0.25,1), top ${travelTime}ms cubic-bezier(0.25,0.1,0.25,1), opacity 0.3s ease`;
-                    card.style.opacity = '1';
-                    card.style.transform = 'scale(1.15)';
-                    trail.style.opacity = '0.7';
-                    // Move along slight arc using intermediate position
-                    const mx = (sx + ex) / 2;
-                    const my = Math.min(sy, ey) - 30;
-                    card.style.left = mx + 'px';
-                    card.style.top = my + 'px';
-                    trail.style.left = mx + 'px';
-                    trail.style.top = my + 'px';
-                    setTimeout(() => {
-                        card.style.transition = `left ${travelTime*0.5}ms ease-in-out, top ${travelTime*0.5}ms ease-in-out, transform ${travelTime*0.5}ms ease, opacity 0.3s ease`;
-                        card.style.left = ex + 'px';
-                        card.style.top = ey + 'px';
-                        card.style.transform = 'scale(1.0)';
-                        trail.style.left = ex + 'px';
-                        trail.style.top = ey + 'px';
-                    }, travelTime * 0.55);
-                });
+                card.style.transition = `left ${travelTime}ms ease-in-out, top ${travelTime}ms ease-in-out, transform ${travelTime}ms ease, opacity 0.25s ease, box-shadow ${travelTime}ms ease`;
+                card.style.boxShadow = '0 0 24px rgba(251,191,36,0.7), 0 4px 16px rgba(0,0,0,0.6)';
+                card.style.transform = 'scale(1.15)';
+                card.style.left = ex + 'px';
+                card.style.top = ey + 'px';
+                // Second phase: settle at destination
+                setTimeout(() => {
+                    card.style.transition = `transform 0.3s ease, opacity 0.4s ease, box-shadow 0.3s ease`;
+                    card.style.transform = 'scale(1.0)';
+                    card.style.boxShadow = '0 4px 16px rgba(0,0,0,0.6)';
+                }, travelTime);
+                // Fade out
                 setTimeout(() => {
                     card.style.opacity = '0';
                     card.style.transform = 'scale(0.8)';
-                    trail.style.opacity = '0';
-                    setTimeout(() => { card.remove(); trail.remove(); }, 400);
-                }, durationMs - 400);
+                    setTimeout(() => card.remove(), 500);
+                }, durationMs - 500);
             },
 
             showPeekFlip(handId, posIdx, cardValue, durationMs) {
+                console.log('[KABO] showPeekFlip', handId, posIdx, cardValue, durationMs);
                 const ov = this._createOverlay();
                 const rect = this._getCardRect(handId, posIdx);
                 if (!rect) return;
                 const cx = rect.left + rect.width/2;
                 const cy = rect.top + rect.height/2;
-                const cw = rect.width || 56;
-                const ch = rect.height || 76;
-                // Create overlay card at exact card position
+                const cw = rect.width || 60;
+                const ch = rect.height || 80;
+                // Overlay card at card position
                 const card = document.createElement('div');
-                card.style.cssText = `position:absolute;left:${rect.left}px;top:${rect.top}px;width:${cw}px;height:${ch}px;background:#263238;border:2px solid #90a4ae;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#90a4ae;font-weight:bold;font-size:${Math.max(14, ch*0.35)}px;z-index:10000;pointer-events:none;transform-style:preserve-3d;perspective:400px;`;
+                card.style.cssText = `position:absolute;left:${rect.left}px;top:${rect.top}px;width:${cw}px;height:${ch}px;background:#263238;border:3px solid #90a4ae;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#90a4ae;font-weight:bold;font-size:${Math.max(16, ch*0.35)}px;z-index:10000;pointer-events:none;`;
                 card.textContent = '?';
                 ov.appendChild(card);
-                // Eye icon above
+                this._forceReflow(card);
+                // Eye icon + label
                 const icon = this._createIcon('\\ud83d\\udc41', cx, cy - ch/2 - 30, 36);
                 ov.appendChild(icon);
                 const lbl = this._createLabel('PEEK', cx, cy - ch/2 - 8);
                 ov.appendChild(lbl);
-                const flipTime = durationMs * 0.15;
+                const flipTime = durationMs * 0.12;
                 const holdTime = durationMs * 0.45;
-                // Phase 1: lift up
-                card.style.transition = `transform ${flipTime}ms ease-out, top ${flipTime}ms ease-out`;
-                requestAnimationFrame(() => {
-                    card.style.top = (rect.top - 25) + 'px';
-                    card.style.transform = 'rotateY(0deg)';
-                });
-                // Phase 2: flip to reveal
+                // Phase 1: lift
+                card.style.transition = `top ${flipTime}ms ease-out, transform ${flipTime}ms ease-out`;
+                card.style.top = (rect.top - 25) + 'px';
+                // Phase 2: flip to 90deg
                 setTimeout(() => {
                     card.style.transition = `transform ${flipTime}ms ease-in`;
                     card.style.transform = 'rotateY(90deg)';
                 }, flipTime);
-                // Phase 3: change face and flip back
+                // Phase 3: swap face, flip back, show icon
                 setTimeout(() => {
                     card.style.background = '#1a237e';
                     card.style.borderColor = '#42a5f5';
@@ -237,13 +229,12 @@ class GameTable:
                     card.textContent = cardValue != null ? cardValue : '?';
                     card.style.transition = `transform ${flipTime}ms ease-out`;
                     card.style.transform = 'rotateY(0deg)';
-                    // Show icon
                     icon.style.transform = 'translate(-50%,-50%) scale(1)';
                     icon.style.opacity = '1';
                     lbl.style.transform = 'translate(-50%,0) scale(1)';
                     lbl.style.opacity = '1';
                 }, flipTime * 2);
-                // Phase 4: hold, then flip back to face-down
+                // Phase 4: flip back to face-down after hold
                 setTimeout(() => {
                     card.style.transition = `transform ${flipTime}ms ease-in`;
                     card.style.transform = 'rotateY(90deg)';
@@ -253,7 +244,7 @@ class GameTable:
                     card.style.borderColor = '#90a4ae';
                     card.style.color = '#90a4ae';
                     card.textContent = '?';
-                    card.style.transition = `transform ${flipTime}ms ease-out, top ${flipTime}ms ease-out, opacity 0.3s ease`;
+                    card.style.transition = `transform ${flipTime}ms ease-out, top ${flipTime}ms ease-out`;
                     card.style.transform = 'rotateY(0deg)';
                     card.style.top = rect.top + 'px';
                     icon.style.transform = 'translate(-50%,-50%) scale(0)';
@@ -263,12 +254,14 @@ class GameTable:
                 }, flipTime * 3 + holdTime);
                 // Cleanup
                 setTimeout(() => {
+                    card.style.transition = 'opacity 0.3s';
                     card.style.opacity = '0';
                     setTimeout(() => { card.remove(); icon.remove(); lbl.remove(); }, 400);
                 }, durationMs - 400);
             },
 
             showSpyReveal(fromHandId, toHandId, posIdx, cardValue, durationMs) {
+                console.log('[KABO] showSpyReveal', fromHandId, toHandId, posIdx, cardValue, durationMs);
                 const ov = this._createOverlay();
                 const fromRect = this._getElRect(fromHandId);
                 const toRect = this._getCardRect(toHandId, posIdx);
@@ -277,21 +270,21 @@ class GameTable:
                 const fy = fromRect.top + fromRect.height/2;
                 const tx = toRect.left + toRect.width/2;
                 const ty = toRect.top + toRect.height/2;
-                const cw = toRect.width || 56;
-                const ch = toRect.height || 76;
-                // Detective icon traveling from spy to target
+                const cw = toRect.width || 60;
+                const ch = toRect.height || 80;
+                // Detective icon
                 const detective = this._createIcon('\\ud83d\\udd75', fx, fy, 40);
                 ov.appendChild(detective);
-                requestAnimationFrame(() => {
-                    detective.style.transform = 'translate(-50%,-50%) scale(1)';
-                    detective.style.opacity = '1';
-                });
+                this._forceReflow(detective);
+                detective.style.transform = 'translate(-50%,-50%) scale(1)';
+                detective.style.opacity = '1';
                 const travelTime = durationMs * 0.25;
+                // Move detective to target
                 setTimeout(() => {
                     detective.style.transition = `left ${travelTime}ms ease-in-out, top ${travelTime}ms ease-in-out`;
                     detective.style.left = tx + 'px';
                     detective.style.top = (ty - ch/2 - 30) + 'px';
-                }, 200);
+                }, 100);
                 // Golden dashed line
                 const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
                 svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
@@ -306,29 +299,31 @@ class GameTable:
                 setTimeout(() => {
                     line.setAttribute('x2', tx);
                     line.setAttribute('y2', ty);
-                }, 200);
+                }, 100);
                 // SPY label
                 const lbl = this._createLabel('SPY', tx, ty - ch/2 - 8);
                 ov.appendChild(lbl);
-                // Card flip reveal at target position (after detective arrives)
-                const arrivalTime = 200 + travelTime;
+                // Card flip at target after detective arrives
+                const arrivalTime = 100 + travelTime;
                 const flipTime = durationMs * 0.1;
                 const holdTime = durationMs * 0.3;
                 setTimeout(() => {
-                    // Create overlay card
                     const card = document.createElement('div');
-                    card.style.cssText = `position:absolute;left:${toRect.left}px;top:${toRect.top}px;width:${cw}px;height:${ch}px;background:#263238;border:2px solid #90a4ae;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#90a4ae;font-weight:bold;font-size:${Math.max(14, ch*0.35)}px;z-index:10000;pointer-events:none;`;
+                    card.style.cssText = `position:absolute;left:${toRect.left}px;top:${toRect.top}px;width:${cw}px;height:${ch}px;background:#263238;border:3px solid #90a4ae;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#90a4ae;font-weight:bold;font-size:${Math.max(16, ch*0.35)}px;z-index:10000;pointer-events:none;`;
                     card.textContent = '?';
                     ov.appendChild(card);
-                    // Lift and flip
-                    card.style.transition = `transform ${flipTime}ms ease-out, top ${flipTime}ms ease-out`;
-                    card.style.top = (toRect.top - 20) + 'px';
+                    this._forceReflow(card);
                     lbl.style.transform = 'translate(-50%,0) scale(1)';
                     lbl.style.opacity = '1';
+                    // Lift
+                    card.style.transition = `top ${flipTime}ms ease-out`;
+                    card.style.top = (toRect.top - 20) + 'px';
+                    // Flip to 90
                     setTimeout(() => {
                         card.style.transition = `transform ${flipTime}ms ease-in`;
                         card.style.transform = 'rotateY(90deg)';
                     }, flipTime);
+                    // Reveal
                     setTimeout(() => {
                         card.style.background = '#1a237e';
                         card.style.borderColor = '#42a5f5';
@@ -337,7 +332,7 @@ class GameTable:
                         card.style.transition = `transform ${flipTime}ms ease-out`;
                         card.style.transform = 'rotateY(0deg)';
                     }, flipTime * 2);
-                    // Hold then flip back
+                    // Flip back after hold
                     setTimeout(() => {
                         card.style.transition = `transform ${flipTime}ms ease-in`;
                         card.style.transform = 'rotateY(90deg)';
@@ -347,17 +342,19 @@ class GameTable:
                         card.style.borderColor = '#90a4ae';
                         card.style.color = '#90a4ae';
                         card.textContent = '?';
-                        card.style.transition = `transform ${flipTime}ms ease-out, top ${flipTime}ms ease-out, opacity 0.3s`;
+                        card.style.transition = `transform ${flipTime}ms ease-out, top ${flipTime}ms ease-out`;
                         card.style.transform = 'rotateY(0deg)';
                         card.style.top = toRect.top + 'px';
                     }, flipTime * 3 + holdTime);
                     setTimeout(() => {
+                        card.style.transition = 'opacity 0.3s';
                         card.style.opacity = '0';
                         setTimeout(() => card.remove(), 300);
                     }, flipTime * 4 + holdTime);
                 }, arrivalTime);
-                // Cleanup all
+                // Cleanup
                 setTimeout(() => {
+                    detective.style.transition = 'opacity 0.3s';
                     detective.style.opacity = '0';
                     lbl.style.opacity = '0';
                     svg.style.opacity = '0';
@@ -366,11 +363,12 @@ class GameTable:
             },
 
             showSwapCards(hand1Id, pos1, hand2Id, pos2, durationMs) {
+                console.log('[KABO] showSwapCards', hand1Id, pos1, hand2Id, pos2, durationMs);
                 const ov = this._createOverlay();
                 const r1 = this._getCardRect(hand1Id, pos1);
                 const r2 = this._getCardRect(hand2Id, pos2);
                 if (!r1 || !r2) return;
-                const cw = 56, ch = 76;
+                const cw = 60, ch = 80;
                 const x1 = r1.left + r1.width/2 - cw/2;
                 const y1 = r1.top + r1.height/2 - ch/2;
                 const x2 = r2.left + r2.width/2 - cw/2;
@@ -381,30 +379,24 @@ class GameTable:
                 card2.style.borderColor = '#fbbf24';
                 ov.appendChild(card1);
                 ov.appendChild(card2);
+                this._forceReflow(card1);
+                this._forceReflow(card2);
                 // Swap icon at midpoint
                 const mx = (r1.left + r1.width/2 + r2.left + r2.width/2) / 2;
                 const my = (r1.top + r1.height/2 + r2.top + r2.height/2) / 2;
                 const icon = this._createIcon('\\ud83d\\udd04', mx, my, 36);
                 ov.appendChild(icon);
                 const travelTime = durationMs * 0.6;
-                // Arc offset for crossing
-                const arcOffset = 40;
-                const dx = x2 - x1;
-                const dy = y2 - y1;
-                const len = Math.sqrt(dx*dx + dy*dy) || 1;
-                const nx = -dy/len * arcOffset;
-                const ny = dx/len * arcOffset;
-                requestAnimationFrame(() => {
-                    card1.style.transition = `left ${travelTime}ms cubic-bezier(0.4,0,0.2,1), top ${travelTime}ms cubic-bezier(0.4,0,0.2,1), box-shadow ${travelTime}ms ease`;
-                    card2.style.transition = `left ${travelTime}ms cubic-bezier(0.4,0,0.2,1), top ${travelTime}ms cubic-bezier(0.4,0,0.2,1), box-shadow ${travelTime}ms ease`;
-                    card1.style.boxShadow = '0 0 20px rgba(251,191,36,0.6)';
-                    card2.style.boxShadow = '0 0 20px rgba(251,191,36,0.6)';
-                    card1.style.left = x2 + 'px';
-                    card1.style.top = y2 + 'px';
-                    card2.style.left = x1 + 'px';
-                    card2.style.top = y1 + 'px';
-                });
-                // Show swap icon at midpoint
+                // Start movement
+                card1.style.transition = `left ${travelTime}ms ease-in-out, top ${travelTime}ms ease-in-out, box-shadow ${travelTime}ms ease`;
+                card2.style.transition = `left ${travelTime}ms ease-in-out, top ${travelTime}ms ease-in-out, box-shadow ${travelTime}ms ease`;
+                card1.style.boxShadow = '0 0 20px rgba(251,191,36,0.6)';
+                card2.style.boxShadow = '0 0 20px rgba(251,191,36,0.6)';
+                card1.style.left = x2 + 'px';
+                card1.style.top = y2 + 'px';
+                card2.style.left = x1 + 'px';
+                card2.style.top = y1 + 'px';
+                // Swap icon at midpoint
                 setTimeout(() => {
                     icon.style.transform = 'translate(-50%,-50%) scale(1.2)';
                     icon.style.opacity = '1';
@@ -415,6 +407,8 @@ class GameTable:
                 }, travelTime * 0.7);
                 // Fade out at destination
                 setTimeout(() => {
+                    card1.style.transition = 'opacity 0.3s';
+                    card2.style.transition = 'opacity 0.3s';
                     card1.style.opacity = '0';
                     card2.style.opacity = '0';
                     setTimeout(() => { card1.remove(); card2.remove(); icon.remove(); }, 400);
@@ -422,28 +416,28 @@ class GameTable:
             },
 
             showExchangeToDiscard(handId, posIdx, durationMs) {
+                console.log('[KABO] showExchangeToDiscard', handId, posIdx, durationMs);
                 const ov = this._createOverlay();
                 const cardRect = this._getCardRect(handId, posIdx);
                 const discardRect = this._getElRect('kabo-discard');
                 if (!cardRect) return;
                 const targetRect = discardRect || this._getElRect('kabo-center');
                 if (!targetRect) return;
-                const cw = 56, ch = 76;
+                const cw = 60, ch = 80;
                 const sx = cardRect.left + cardRect.width/2 - cw/2;
                 const sy = cardRect.top + cardRect.height/2 - ch/2;
                 const ex = targetRect.left + targetRect.width/2 - cw/2;
                 const ey = targetRect.top + targetRect.height/2 - ch/2;
                 const card = this._createCardEl(sx, sy, cw, ch, false, null);
-                card.style.transition = 'none';
                 ov.appendChild(card);
+                this._forceReflow(card);
                 const travelTime = durationMs * 0.7;
-                requestAnimationFrame(() => {
-                    card.style.transition = `left ${travelTime}ms ease-in-out, top ${travelTime}ms ease-in-out, transform ${travelTime}ms ease-in-out, opacity 0.3s ease`;
-                    card.style.left = ex + 'px';
-                    card.style.top = ey + 'px';
-                    card.style.transform = 'rotate(15deg)';
-                });
+                card.style.transition = `left ${travelTime}ms ease-in-out, top ${travelTime}ms ease-in-out, transform ${travelTime}ms ease-in-out`;
+                card.style.left = ex + 'px';
+                card.style.top = ey + 'px';
+                card.style.transform = 'rotate(15deg)';
                 setTimeout(() => {
+                    card.style.transition = 'opacity 0.3s, transform 0.3s';
                     card.style.opacity = '0';
                     card.style.transform = 'rotate(15deg) scale(0.7)';
                     setTimeout(() => card.remove(), 400);
@@ -451,28 +445,28 @@ class GameTable:
             },
 
             showDiscardCard(cardValue, durationMs) {
+                console.log('[KABO] showDiscardCard', cardValue, durationMs);
                 const ov = this._createOverlay();
                 const centerRect = this._getElRect('kabo-center');
                 const discardRect = this._getElRect('kabo-discard');
                 if (!centerRect) return;
                 const targetRect = discardRect || centerRect;
-                const cw = 56, ch = 76;
+                const cw = 60, ch = 80;
                 const sx = centerRect.left + centerRect.width/2 - cw/2;
                 const sy = centerRect.top + centerRect.height/2 - ch/2 - 20;
                 const ex = targetRect.left + targetRect.width/2 - cw/2;
                 const ey = targetRect.top + targetRect.height/2 - ch/2;
                 const card = this._createCardEl(sx, sy, cw, ch, true, cardValue);
-                card.style.transition = 'none';
                 card.style.transform = 'scale(1.2)';
                 ov.appendChild(card);
+                this._forceReflow(card);
                 const travelTime = durationMs * 0.6;
-                requestAnimationFrame(() => {
-                    card.style.transition = `left ${travelTime}ms ease-in-out, top ${travelTime}ms ease-in-out, transform ${travelTime}ms ease, opacity 0.3s ease`;
-                    card.style.left = ex + 'px';
-                    card.style.top = ey + 'px';
-                    card.style.transform = 'scale(1.0)';
-                });
+                card.style.transition = `left ${travelTime}ms ease-in-out, top ${travelTime}ms ease-in-out, transform ${travelTime}ms ease`;
+                card.style.left = ex + 'px';
+                card.style.top = ey + 'px';
+                card.style.transform = 'scale(1.0)';
                 setTimeout(() => {
+                    card.style.transition = 'opacity 0.3s, transform 0.3s';
                     card.style.opacity = '0';
                     card.style.transform = 'scale(0.8)';
                     setTimeout(() => card.remove(), 400);
@@ -480,16 +474,16 @@ class GameTable:
             },
 
             showKaboCall(playerName, durationMs) {
+                console.log('[KABO] showKaboCall', playerName, durationMs);
                 const ov = this._createOverlay();
                 const el = document.createElement('div');
                 el.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%) scale(0);font-size:64px;font-weight:bold;color:#ef4444;text-shadow:0 0 20px rgba(239,68,68,0.8),0 0 40px rgba(239,68,68,0.4);transition:transform 0.4s cubic-bezier(0.34,1.56,0.64,1), opacity 0.4s;opacity:0;z-index:10001;white-space:nowrap;';
                 el.innerHTML = 'KABO!<br><span style="font-size:24px;color:white;">' + playerName + '</span>';
                 el.style.textAlign = 'center';
                 ov.appendChild(el);
-                requestAnimationFrame(() => {
-                    el.style.transform = 'translate(-50%,-50%) scale(1)';
-                    el.style.opacity = '1';
-                });
+                this._forceReflow(el);
+                el.style.transform = 'translate(-50%,-50%) scale(1)';
+                el.style.opacity = '1';
                 setTimeout(() => {
                     el.style.transform = 'translate(-50%,-50%) scale(1.2)';
                 }, durationMs * 0.3);
