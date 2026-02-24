@@ -110,108 +110,375 @@ class GameTable:
                 }
                 return ov;
             },
+            _getCardRect(handId, posIdx) {
+                const el = document.getElementById(handId);
+                if (!el) return null;
+                const cards = el.querySelectorAll('[class*="rounded-lg"]');
+                if (cards.length > posIdx && posIdx >= 0) {
+                    return cards[posIdx].getBoundingClientRect();
+                }
+                return el.getBoundingClientRect();
+            },
+            _getElRect(id) {
+                const el = document.getElementById(id);
+                return el ? el.getBoundingClientRect() : null;
+            },
+            _createCardEl(x, y, w, h, faceUp, cardValue) {
+                const card = document.createElement('div');
+                const bg = faceUp ? '#1a237e' : '#263238';
+                const border = faceUp ? '#42a5f5' : '#90a4ae';
+                const content = faceUp && cardValue != null ? cardValue : '?';
+                const textColor = faceUp ? '#fff' : '#90a4ae';
+                const fontSize = faceUp ? Math.max(14, h * 0.35) : Math.max(12, h * 0.3);
+                card.style.cssText = `position:absolute;left:${x}px;top:${y}px;width:${w}px;height:${h}px;background:${bg};border:2px solid ${border};border-radius:8px;display:flex;align-items:center;justify-content:center;color:${textColor};font-weight:bold;font-size:${fontSize}px;z-index:10000;box-shadow:0 4px 16px rgba(0,0,0,0.6);pointer-events:none;`;
+                card.textContent = content;
+                return card;
+            },
             _createIcon(emoji, x, y, size) {
                 const el = document.createElement('div');
                 el.style.cssText = `position:absolute;left:${x}px;top:${y}px;font-size:${size}px;transform:translate(-50%,-50%) scale(0);transition:transform 0.3s ease-out, opacity 0.3s;opacity:0;z-index:10000;filter:drop-shadow(0 0 10px rgba(255,255,255,0.5));`;
                 el.textContent = emoji;
                 return el;
             },
-            showEffectIcon(emoji, label, targetId, posIdx, durationMs) {
+            _createLabel(text, x, y) {
+                const lbl = document.createElement('div');
+                lbl.style.cssText = `position:absolute;left:${x}px;top:${y}px;transform:translate(-50%,0) scale(0);transition:transform 0.3s ease-out, opacity 0.3s;opacity:0;font-size:14px;font-weight:bold;color:white;text-shadow:0 0 8px rgba(0,0,0,0.8);white-space:nowrap;z-index:10000;`;
+                lbl.textContent = text;
+                return lbl;
+            },
+
+            showDrawAnimation(fromId, toId, cardValue, durationMs) {
                 const ov = this._createOverlay();
-                const target = document.getElementById(targetId);
-                if (!target) { return; }
-                const cards = target.querySelectorAll('[class*="rounded-lg"]');
-                let rect;
-                if (cards.length > posIdx && posIdx >= 0) {
-                    rect = cards[posIdx].getBoundingClientRect();
-                } else {
-                    rect = target.getBoundingClientRect();
-                }
+                const fr = this._getElRect(fromId);
+                const tr = this._getElRect(toId);
+                if (!fr || !tr) return;
+                const cw = 56, ch = 76;
+                const sx = fr.left + fr.width/2 - cw/2;
+                const sy = fr.top + fr.height/2 - ch/2;
+                const ex = tr.left + tr.width/2 - cw/2;
+                const ey = tr.top + tr.height/2 - ch/2;
+                const faceUp = cardValue != null;
+                const card = this._createCardEl(sx, sy, cw, ch, faceUp, cardValue);
+                card.style.transition = 'none';
+                card.style.transform = 'scale(0.5)';
+                card.style.opacity = '0';
+                ov.appendChild(card);
+                // Trail glow
+                const trail = document.createElement('div');
+                trail.style.cssText = `position:absolute;left:${sx}px;top:${sy}px;width:${cw}px;height:${ch}px;border-radius:8px;background:transparent;box-shadow:0 0 20px rgba(251,191,36,0.6);z-index:9999;transition:none;opacity:0;pointer-events:none;`;
+                ov.appendChild(trail);
+                const travelTime = durationMs * 0.65;
+                requestAnimationFrame(() => {
+                    card.style.transition = `left ${travelTime}ms cubic-bezier(0.25,0.1,0.25,1), top ${travelTime}ms cubic-bezier(0.25,0.1,0.25,1), transform ${travelTime}ms ease, opacity 0.2s ease`;
+                    trail.style.transition = `left ${travelTime}ms cubic-bezier(0.25,0.1,0.25,1), top ${travelTime}ms cubic-bezier(0.25,0.1,0.25,1), opacity 0.3s ease`;
+                    card.style.opacity = '1';
+                    card.style.transform = 'scale(1.15)';
+                    trail.style.opacity = '0.7';
+                    // Move along slight arc using intermediate position
+                    const mx = (sx + ex) / 2;
+                    const my = Math.min(sy, ey) - 30;
+                    card.style.left = mx + 'px';
+                    card.style.top = my + 'px';
+                    trail.style.left = mx + 'px';
+                    trail.style.top = my + 'px';
+                    setTimeout(() => {
+                        card.style.transition = `left ${travelTime*0.5}ms ease-in-out, top ${travelTime*0.5}ms ease-in-out, transform ${travelTime*0.5}ms ease, opacity 0.3s ease`;
+                        card.style.left = ex + 'px';
+                        card.style.top = ey + 'px';
+                        card.style.transform = 'scale(1.0)';
+                        trail.style.left = ex + 'px';
+                        trail.style.top = ey + 'px';
+                    }, travelTime * 0.55);
+                });
+                setTimeout(() => {
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.8)';
+                    trail.style.opacity = '0';
+                    setTimeout(() => { card.remove(); trail.remove(); }, 400);
+                }, durationMs - 400);
+            },
+
+            showPeekFlip(handId, posIdx, cardValue, durationMs) {
+                const ov = this._createOverlay();
+                const rect = this._getCardRect(handId, posIdx);
+                if (!rect) return;
                 const cx = rect.left + rect.width/2;
                 const cy = rect.top + rect.height/2;
-                const icon = this._createIcon(emoji, cx, cy - 20, 48);
+                const cw = rect.width || 56;
+                const ch = rect.height || 76;
+                // Create overlay card at exact card position
+                const card = document.createElement('div');
+                card.style.cssText = `position:absolute;left:${rect.left}px;top:${rect.top}px;width:${cw}px;height:${ch}px;background:#263238;border:2px solid #90a4ae;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#90a4ae;font-weight:bold;font-size:${Math.max(14, ch*0.35)}px;z-index:10000;pointer-events:none;transform-style:preserve-3d;perspective:400px;`;
+                card.textContent = '?';
+                ov.appendChild(card);
+                // Eye icon above
+                const icon = this._createIcon('\\ud83d\\udc41', cx, cy - ch/2 - 30, 36);
                 ov.appendChild(icon);
-                // Label below icon
-                const lbl = document.createElement('div');
-                lbl.style.cssText = `position:absolute;left:${cx}px;top:${cy + 25}px;transform:translate(-50%,0) scale(0);transition:transform 0.3s ease-out, opacity 0.3s;opacity:0;font-size:14px;font-weight:bold;color:white;text-shadow:0 0 8px rgba(0,0,0,0.8);white-space:nowrap;`;
-                lbl.textContent = label;
+                const lbl = this._createLabel('PEEK', cx, cy - ch/2 - 8);
                 ov.appendChild(lbl);
+                const flipTime = durationMs * 0.15;
+                const holdTime = durationMs * 0.45;
+                // Phase 1: lift up
+                card.style.transition = `transform ${flipTime}ms ease-out, top ${flipTime}ms ease-out`;
                 requestAnimationFrame(() => {
+                    card.style.top = (rect.top - 25) + 'px';
+                    card.style.transform = 'rotateY(0deg)';
+                });
+                // Phase 2: flip to reveal
+                setTimeout(() => {
+                    card.style.transition = `transform ${flipTime}ms ease-in`;
+                    card.style.transform = 'rotateY(90deg)';
+                }, flipTime);
+                // Phase 3: change face and flip back
+                setTimeout(() => {
+                    card.style.background = '#1a237e';
+                    card.style.borderColor = '#42a5f5';
+                    card.style.color = '#fff';
+                    card.textContent = cardValue != null ? cardValue : '?';
+                    card.style.transition = `transform ${flipTime}ms ease-out`;
+                    card.style.transform = 'rotateY(0deg)';
+                    // Show icon
                     icon.style.transform = 'translate(-50%,-50%) scale(1)';
                     icon.style.opacity = '1';
                     lbl.style.transform = 'translate(-50%,0) scale(1)';
                     lbl.style.opacity = '1';
-                });
+                }, flipTime * 2);
+                // Phase 4: hold, then flip back to face-down
                 setTimeout(() => {
+                    card.style.transition = `transform ${flipTime}ms ease-in`;
+                    card.style.transform = 'rotateY(90deg)';
+                }, flipTime * 2 + holdTime);
+                setTimeout(() => {
+                    card.style.background = '#263238';
+                    card.style.borderColor = '#90a4ae';
+                    card.style.color = '#90a4ae';
+                    card.textContent = '?';
+                    card.style.transition = `transform ${flipTime}ms ease-out, top ${flipTime}ms ease-out, opacity 0.3s ease`;
+                    card.style.transform = 'rotateY(0deg)';
+                    card.style.top = rect.top + 'px';
                     icon.style.transform = 'translate(-50%,-50%) scale(0)';
                     icon.style.opacity = '0';
                     lbl.style.transform = 'translate(-50%,0) scale(0)';
                     lbl.style.opacity = '0';
-                    setTimeout(() => { icon.remove(); lbl.remove(); }, 400);
+                }, flipTime * 3 + holdTime);
+                // Cleanup
+                setTimeout(() => {
+                    card.style.opacity = '0';
+                    setTimeout(() => { card.remove(); icon.remove(); lbl.remove(); }, 400);
                 }, durationMs - 400);
             },
-            showSpyLine(fromId, toId, posIdx, durationMs) {
+
+            showSpyReveal(fromHandId, toHandId, posIdx, cardValue, durationMs) {
                 const ov = this._createOverlay();
-                const from = document.getElementById(fromId);
-                const to = document.getElementById(toId);
-                if (!from || !to) return;
-                const fromRect = from.getBoundingClientRect();
-                const toCards = to.querySelectorAll('[class*="rounded-lg"]');
-                let toRect;
-                if (toCards.length > posIdx && posIdx >= 0) {
-                    toRect = toCards[posIdx].getBoundingClientRect();
-                } else {
-                    toRect = to.getBoundingClientRect();
-                }
-                const x1 = fromRect.left + fromRect.width/2;
-                const y1 = fromRect.top + fromRect.height/2;
-                const x2 = toRect.left + toRect.width/2;
-                const y2 = toRect.top + toRect.height/2;
+                const fromRect = this._getElRect(fromHandId);
+                const toRect = this._getCardRect(toHandId, posIdx);
+                if (!fromRect || !toRect) return;
+                const fx = fromRect.left + fromRect.width/2;
+                const fy = fromRect.top + fromRect.height/2;
+                const tx = toRect.left + toRect.width/2;
+                const ty = toRect.top + toRect.height/2;
+                const cw = toRect.width || 56;
+                const ch = toRect.height || 76;
+                // Detective icon traveling from spy to target
+                const detective = this._createIcon('\\ud83d\\udd75', fx, fy, 40);
+                ov.appendChild(detective);
+                requestAnimationFrame(() => {
+                    detective.style.transform = 'translate(-50%,-50%) scale(1)';
+                    detective.style.opacity = '1';
+                });
+                const travelTime = durationMs * 0.25;
+                setTimeout(() => {
+                    detective.style.transition = `left ${travelTime}ms ease-in-out, top ${travelTime}ms ease-in-out`;
+                    detective.style.left = tx + 'px';
+                    detective.style.top = (ty - ch/2 - 30) + 'px';
+                }, 200);
+                // Golden dashed line
                 const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
                 svg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none;';
                 const line = document.createElementNS('http://www.w3.org/2000/svg','line');
-                line.setAttribute('x1',x1); line.setAttribute('y1',y1);
-                line.setAttribute('x2',x1); line.setAttribute('y2',y1);
-                line.setAttribute('stroke','#fbbf24'); line.setAttribute('stroke-width','3');
-                line.setAttribute('stroke-dasharray','8,4'); line.setAttribute('opacity','0.8');
-                line.style.transition = `all ${durationMs*0.3}ms ease-out`;
+                line.setAttribute('x1',fx); line.setAttribute('y1',fy);
+                line.setAttribute('x2',fx); line.setAttribute('y2',fy);
+                line.setAttribute('stroke','#fbbf24'); line.setAttribute('stroke-width','2');
+                line.setAttribute('stroke-dasharray','8,4'); line.setAttribute('opacity','0.6');
+                line.style.transition = `all ${travelTime}ms ease-out`;
                 svg.appendChild(line);
                 ov.appendChild(svg);
-                requestAnimationFrame(() => {
-                    line.setAttribute('x2',x2); line.setAttribute('y2',y2);
-                });
                 setTimeout(() => {
-                    line.style.opacity = '0';
-                    setTimeout(() => svg.remove(), 400);
+                    line.setAttribute('x2', tx);
+                    line.setAttribute('y2', ty);
+                }, 200);
+                // SPY label
+                const lbl = this._createLabel('SPY', tx, ty - ch/2 - 8);
+                ov.appendChild(lbl);
+                // Card flip reveal at target position (after detective arrives)
+                const arrivalTime = 200 + travelTime;
+                const flipTime = durationMs * 0.1;
+                const holdTime = durationMs * 0.3;
+                setTimeout(() => {
+                    // Create overlay card
+                    const card = document.createElement('div');
+                    card.style.cssText = `position:absolute;left:${toRect.left}px;top:${toRect.top}px;width:${cw}px;height:${ch}px;background:#263238;border:2px solid #90a4ae;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#90a4ae;font-weight:bold;font-size:${Math.max(14, ch*0.35)}px;z-index:10000;pointer-events:none;`;
+                    card.textContent = '?';
+                    ov.appendChild(card);
+                    // Lift and flip
+                    card.style.transition = `transform ${flipTime}ms ease-out, top ${flipTime}ms ease-out`;
+                    card.style.top = (toRect.top - 20) + 'px';
+                    lbl.style.transform = 'translate(-50%,0) scale(1)';
+                    lbl.style.opacity = '1';
+                    setTimeout(() => {
+                        card.style.transition = `transform ${flipTime}ms ease-in`;
+                        card.style.transform = 'rotateY(90deg)';
+                    }, flipTime);
+                    setTimeout(() => {
+                        card.style.background = '#1a237e';
+                        card.style.borderColor = '#42a5f5';
+                        card.style.color = '#fff';
+                        card.textContent = cardValue != null ? cardValue : '?';
+                        card.style.transition = `transform ${flipTime}ms ease-out`;
+                        card.style.transform = 'rotateY(0deg)';
+                    }, flipTime * 2);
+                    // Hold then flip back
+                    setTimeout(() => {
+                        card.style.transition = `transform ${flipTime}ms ease-in`;
+                        card.style.transform = 'rotateY(90deg)';
+                    }, flipTime * 2 + holdTime);
+                    setTimeout(() => {
+                        card.style.background = '#263238';
+                        card.style.borderColor = '#90a4ae';
+                        card.style.color = '#90a4ae';
+                        card.textContent = '?';
+                        card.style.transition = `transform ${flipTime}ms ease-out, top ${flipTime}ms ease-out, opacity 0.3s`;
+                        card.style.transform = 'rotateY(0deg)';
+                        card.style.top = toRect.top + 'px';
+                    }, flipTime * 3 + holdTime);
+                    setTimeout(() => {
+                        card.style.opacity = '0';
+                        setTimeout(() => card.remove(), 300);
+                    }, flipTime * 4 + holdTime);
+                }, arrivalTime);
+                // Cleanup all
+                setTimeout(() => {
+                    detective.style.opacity = '0';
+                    lbl.style.opacity = '0';
+                    svg.style.opacity = '0';
+                    setTimeout(() => { detective.remove(); lbl.remove(); svg.remove(); }, 400);
                 }, durationMs - 400);
             },
-            showSwapArrows(hand1Id, pos1, hand2Id, pos2, durationMs) {
+
+            showSwapCards(hand1Id, pos1, hand2Id, pos2, durationMs) {
                 const ov = this._createOverlay();
-                const h1 = document.getElementById(hand1Id);
-                const h2 = document.getElementById(hand2Id);
-                if (!h1 || !h2) return;
-                const cards1 = h1.querySelectorAll('[class*="rounded-lg"]');
-                const cards2 = h2.querySelectorAll('[class*="rounded-lg"]');
-                let r1 = (cards1.length > pos1 && pos1 >= 0) ? cards1[pos1].getBoundingClientRect() : h1.getBoundingClientRect();
-                let r2 = (cards2.length > pos2 && pos2 >= 0) ? cards2[pos2].getBoundingClientRect() : h2.getBoundingClientRect();
-                const cx = (r1.left+r1.width/2 + r2.left+r2.width/2) / 2;
-                const cy = (r1.top+r1.height/2 + r2.top+r2.height/2) / 2;
-                const icon = this._createIcon('\\u21C4', cx, cy, 40);
-                icon.style.color = '#fbbf24';
+                const r1 = this._getCardRect(hand1Id, pos1);
+                const r2 = this._getCardRect(hand2Id, pos2);
+                if (!r1 || !r2) return;
+                const cw = 56, ch = 76;
+                const x1 = r1.left + r1.width/2 - cw/2;
+                const y1 = r1.top + r1.height/2 - ch/2;
+                const x2 = r2.left + r2.width/2 - cw/2;
+                const y2 = r2.top + r2.height/2 - ch/2;
+                const card1 = this._createCardEl(x1, y1, cw, ch, false, null);
+                const card2 = this._createCardEl(x2, y2, cw, ch, false, null);
+                card1.style.borderColor = '#fbbf24';
+                card2.style.borderColor = '#fbbf24';
+                ov.appendChild(card1);
+                ov.appendChild(card2);
+                // Swap icon at midpoint
+                const mx = (r1.left + r1.width/2 + r2.left + r2.width/2) / 2;
+                const my = (r1.top + r1.height/2 + r2.top + r2.height/2) / 2;
+                const icon = this._createIcon('\\ud83d\\udd04', mx, my, 36);
                 ov.appendChild(icon);
+                const travelTime = durationMs * 0.6;
+                // Arc offset for crossing
+                const arcOffset = 40;
+                const dx = x2 - x1;
+                const dy = y2 - y1;
+                const len = Math.sqrt(dx*dx + dy*dy) || 1;
+                const nx = -dy/len * arcOffset;
+                const ny = dx/len * arcOffset;
                 requestAnimationFrame(() => {
-                    icon.style.transform = 'translate(-50%,-50%) scale(1) rotate(0deg)';
-                    icon.style.opacity = '1';
+                    card1.style.transition = `left ${travelTime}ms cubic-bezier(0.4,0,0.2,1), top ${travelTime}ms cubic-bezier(0.4,0,0.2,1), box-shadow ${travelTime}ms ease`;
+                    card2.style.transition = `left ${travelTime}ms cubic-bezier(0.4,0,0.2,1), top ${travelTime}ms cubic-bezier(0.4,0,0.2,1), box-shadow ${travelTime}ms ease`;
+                    card1.style.boxShadow = '0 0 20px rgba(251,191,36,0.6)';
+                    card2.style.boxShadow = '0 0 20px rgba(251,191,36,0.6)';
+                    card1.style.left = x2 + 'px';
+                    card1.style.top = y2 + 'px';
+                    card2.style.left = x1 + 'px';
+                    card2.style.top = y1 + 'px';
                 });
+                // Show swap icon at midpoint
                 setTimeout(() => {
-                    icon.style.transform = 'translate(-50%,-50%) scale(1) rotate(360deg)';
-                }, 300);
+                    icon.style.transform = 'translate(-50%,-50%) scale(1.2)';
+                    icon.style.opacity = '1';
+                }, travelTime * 0.3);
                 setTimeout(() => {
                     icon.style.transform = 'translate(-50%,-50%) scale(0)';
                     icon.style.opacity = '0';
-                    setTimeout(() => icon.remove(), 400);
+                }, travelTime * 0.7);
+                // Fade out at destination
+                setTimeout(() => {
+                    card1.style.opacity = '0';
+                    card2.style.opacity = '0';
+                    setTimeout(() => { card1.remove(); card2.remove(); icon.remove(); }, 400);
                 }, durationMs - 400);
             },
+
+            showExchangeToDiscard(handId, posIdx, durationMs) {
+                const ov = this._createOverlay();
+                const cardRect = this._getCardRect(handId, posIdx);
+                const discardRect = this._getElRect('kabo-discard');
+                if (!cardRect) return;
+                const targetRect = discardRect || this._getElRect('kabo-center');
+                if (!targetRect) return;
+                const cw = 56, ch = 76;
+                const sx = cardRect.left + cardRect.width/2 - cw/2;
+                const sy = cardRect.top + cardRect.height/2 - ch/2;
+                const ex = targetRect.left + targetRect.width/2 - cw/2;
+                const ey = targetRect.top + targetRect.height/2 - ch/2;
+                const card = this._createCardEl(sx, sy, cw, ch, false, null);
+                card.style.transition = 'none';
+                ov.appendChild(card);
+                const travelTime = durationMs * 0.7;
+                requestAnimationFrame(() => {
+                    card.style.transition = `left ${travelTime}ms ease-in-out, top ${travelTime}ms ease-in-out, transform ${travelTime}ms ease-in-out, opacity 0.3s ease`;
+                    card.style.left = ex + 'px';
+                    card.style.top = ey + 'px';
+                    card.style.transform = 'rotate(15deg)';
+                });
+                setTimeout(() => {
+                    card.style.opacity = '0';
+                    card.style.transform = 'rotate(15deg) scale(0.7)';
+                    setTimeout(() => card.remove(), 400);
+                }, durationMs - 400);
+            },
+
+            showDiscardCard(cardValue, durationMs) {
+                const ov = this._createOverlay();
+                const centerRect = this._getElRect('kabo-center');
+                const discardRect = this._getElRect('kabo-discard');
+                if (!centerRect) return;
+                const targetRect = discardRect || centerRect;
+                const cw = 56, ch = 76;
+                const sx = centerRect.left + centerRect.width/2 - cw/2;
+                const sy = centerRect.top + centerRect.height/2 - ch/2 - 20;
+                const ex = targetRect.left + targetRect.width/2 - cw/2;
+                const ey = targetRect.top + targetRect.height/2 - ch/2;
+                const card = this._createCardEl(sx, sy, cw, ch, true, cardValue);
+                card.style.transition = 'none';
+                card.style.transform = 'scale(1.2)';
+                ov.appendChild(card);
+                const travelTime = durationMs * 0.6;
+                requestAnimationFrame(() => {
+                    card.style.transition = `left ${travelTime}ms ease-in-out, top ${travelTime}ms ease-in-out, transform ${travelTime}ms ease, opacity 0.3s ease`;
+                    card.style.left = ex + 'px';
+                    card.style.top = ey + 'px';
+                    card.style.transform = 'scale(1.0)';
+                });
+                setTimeout(() => {
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.8)';
+                    setTimeout(() => card.remove(), 400);
+                }, durationMs - 400);
+            },
+
             showKaboCall(playerName, durationMs) {
                 const ov = this._createOverlay();
                 const el = document.createElement('div');
@@ -231,24 +498,6 @@ class GameTable:
                     el.style.opacity = '0';
                     setTimeout(() => el.remove(), 500);
                 }, durationMs - 500);
-            },
-            showDrawAnimation(fromId, toId, durationMs) {
-                const ov = this._createOverlay();
-                const from = document.getElementById(fromId);
-                const to = document.getElementById(toId);
-                if (!from || !to) return;
-                const fr = from.getBoundingClientRect();
-                const tr = to.getBoundingClientRect();
-                const card = document.createElement('div');
-                card.style.cssText = `position:absolute;left:${fr.left+fr.width/2-24}px;top:${fr.top+fr.height/2-32}px;width:48px;height:64px;background:#263238;border:2px solid #90a4ae;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#90a4ae;font-weight:bold;font-size:16px;transition:all ${durationMs*0.7}ms ease-in-out;z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.5);`;
-                card.textContent = '?';
-                ov.appendChild(card);
-                requestAnimationFrame(() => {
-                    card.style.left = (tr.left+tr.width/2-24) + 'px';
-                    card.style.top = (tr.top+tr.height/2-32) + 'px';
-                    card.style.opacity = '0.7';
-                });
-                setTimeout(() => card.remove(), durationMs);
             }
         };
         </script>
@@ -799,35 +1048,42 @@ class GameTable:
     def _anim_draw_deck(self, event: AnimationEvent) -> None:
         hand_id = self._hand_id(event.player_name)
         ui.run_javascript(
-            f'kaboAnimations.showDrawAnimation("kabo-deck", "{hand_id}", {event.duration_ms})'
+            f'kaboAnimations.showDrawAnimation("kabo-deck", "{hand_id}", null, {event.duration_ms})'
         )
         ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
 
     def _anim_draw_discard(self, event: AnimationEvent) -> None:
         hand_id = self._hand_id(event.player_name)
+        cv = event.card_value
+        val_js = f'{cv}' if cv is not None else 'null'
         ui.run_javascript(
-            f'kaboAnimations.showDrawAnimation("kabo-discard", "{hand_id}", {event.duration_ms})'
+            f'kaboAnimations.showDrawAnimation("kabo-discard", "{hand_id}", {val_js}, {event.duration_ms})'
         )
         ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
 
     def _anim_exchange(self, event: AnimationEvent) -> None:
         hand_id = self._hand_id(event.player_name)
+        pos = event.card_positions[0] if event.card_positions else 0
         ui.run_javascript(
-            f'kaboAnimations.showDrawAnimation("{hand_id}", "kabo-discard", {event.duration_ms})'
+            f'kaboAnimations.showExchangeToDiscard("{hand_id}", {pos}, {event.duration_ms})'
         )
         ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
 
     def _anim_discard(self, event: AnimationEvent) -> None:
+        cv = event.card_value
+        val_js = f'{cv}' if cv is not None else 'null'
         ui.run_javascript(
-            f'kaboAnimations.showDrawAnimation("kabo-center", "kabo-discard", {event.duration_ms})'
+            f'kaboAnimations.showDiscardCard({val_js}, {event.duration_ms})'
         )
         ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
 
     def _anim_peek(self, event: AnimationEvent) -> None:
         hand_id = self._hand_id(event.player_name)
         pos = event.card_positions[0] if event.card_positions else 0
+        cv = event.card_value
+        val_js = f'{cv}' if cv is not None else 'null'
         ui.run_javascript(
-            f'kaboAnimations.showEffectIcon("\\ud83d\\udc41", "PEEK", "{hand_id}", {pos}, {event.duration_ms})'
+            f'kaboAnimations.showPeekFlip("{hand_id}", {pos}, {val_js}, {event.duration_ms})'
         )
         ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
 
@@ -835,11 +1091,10 @@ class GameTable:
         spy_hand_id = self._hand_id(event.player_name)
         target_hand_id = self._hand_id(event.target_player_name)
         pos = event.target_positions[0] if event.target_positions else 0
+        cv = event.card_value
+        val_js = f'{cv}' if cv is not None else 'null'
         ui.run_javascript(
-            f'kaboAnimations.showEffectIcon("\\ud83d\\udd75", "SPY: {event.player_name} \\u2192 {event.target_player_name}", "{target_hand_id}", {pos}, {event.duration_ms})'
-        )
-        ui.run_javascript(
-            f'kaboAnimations.showSpyLine("{spy_hand_id}", "{target_hand_id}", {pos}, {event.duration_ms})'
+            f'kaboAnimations.showSpyReveal("{spy_hand_id}", "{target_hand_id}", {pos}, {val_js}, {event.duration_ms})'
         )
         ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
 
@@ -849,10 +1104,7 @@ class GameTable:
         pos1 = event.card_positions[0] if event.card_positions else 0
         pos2 = event.target_positions[0] if event.target_positions else 0
         ui.run_javascript(
-            f'kaboAnimations.showEffectIcon("\\ud83d\\udd04", "SWAP", "kabo-center", 0, {event.duration_ms})'
-        )
-        ui.run_javascript(
-            f'kaboAnimations.showSwapArrows("{hand1_id}", {pos1}, "{hand2_id}", {pos2}, {event.duration_ms})'
+            f'kaboAnimations.showSwapCards("{hand1_id}", {pos1}, "{hand2_id}", {pos2}, {event.duration_ms})'
         )
         ui.timer(event.duration_ms / 1000.0, self._play_next_animation, once=True)
 

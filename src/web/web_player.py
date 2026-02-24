@@ -151,6 +151,14 @@ class WebPlayer(Player):
 
     # --- Notification broadcasting ---
 
+    def _emit_self_animation(self, event: AnimationEvent) -> None:
+        """Emit an animation event to this player's own event bus."""
+        if self.event_bus:
+            try:
+                self.event_bus.emit("animation", event)
+            except Exception:
+                pass
+
     def _broadcast_animation(self, event: AnimationEvent) -> None:
         """Broadcast an animation event to all other players."""
         if not self._room:
@@ -244,6 +252,11 @@ class WebPlayer(Player):
     def keep_drawn_card(self, drawn_card: Card, _round: Round) -> None:
         """Override to emit updated state after exchange completes."""
         super().keep_drawn_card(drawn_card, _round)
+        # Emit exchange animation to self and others
+        anim = AnimationEvent(
+            animation_type="exchange", player_name=self.name, duration_ms=1500)
+        self._emit_self_animation(anim)
+        self._broadcast_animation(anim)
         # Emit updated state so UI reflects changes (extra cards, face-up cards)
         if self._room:
             self._room.broadcast_state_to_others(self.name, _round)
@@ -293,16 +306,26 @@ class WebPlayer(Player):
         }
         action_type, desc = action_map.get(response, ("unknown", f"{self.name} acts"))
 
-        # Broadcast animation event to other players
+        # Emit animation to self and broadcast to other players
         if response == "KABO":
-            self._broadcast_animation(AnimationEvent(
-                animation_type="kabo_call", player_name=self.name, duration_ms=2000))
+            anim = AnimationEvent(
+                animation_type="kabo_call", player_name=self.name, duration_ms=3000)
+            self._emit_self_animation(anim)
+            self._broadcast_animation(anim)
         elif response == "HIT_DECK":
-            self._broadcast_animation(AnimationEvent(
-                animation_type="draw_deck", player_name=self.name, duration_ms=800))
+            anim = AnimationEvent(
+                animation_type="draw_deck", player_name=self.name, duration_ms=1500)
+            self._emit_self_animation(anim)
+            self._broadcast_animation(anim)
         elif response == "HIT_DISCARD_PILE":
-            self._broadcast_animation(AnimationEvent(
-                animation_type="draw_discard", player_name=self.name, duration_ms=800))
+            discard_val = None
+            if _round and _round.discard_pile:
+                discard_val = _round.discard_pile[-1].value
+            anim = AnimationEvent(
+                animation_type="draw_discard", player_name=self.name,
+                card_value=discard_val, duration_ms=1500)
+            self._emit_self_animation(anim)
+            self._broadcast_animation(anim)
 
         notification_type = "kabo_called" if response == "KABO" else "opponent_action"
         if self._room:
@@ -348,15 +371,13 @@ class WebPlayer(Player):
         action_type, desc = decision_map.get(response, ("unknown", f"{self.name} acts"))
         self._broadcast_action(action_type, desc)
 
-        # Broadcast animation for discard/effect
-        if response == "DISCARD":
-            self._broadcast_animation(AnimationEvent(
+        # Emit animation to self and broadcast for discard/effect
+        if response in ("DISCARD", "EFFECT"):
+            anim = AnimationEvent(
                 animation_type="discard", player_name=self.name,
-                card_value=card.value, duration_ms=600))
-        elif response == "EFFECT":
-            self._broadcast_animation(AnimationEvent(
-                animation_type="discard", player_name=self.name,
-                card_value=card.value, duration_ms=600))
+                card_value=card.value, duration_ms=1200)
+            self._emit_self_animation(anim)
+            self._broadcast_animation(anim)
 
         return response
 
@@ -432,7 +453,7 @@ class WebPlayer(Player):
         self._broadcast_animation(AnimationEvent(
             animation_type="spy", player_name=self.name,
             target_player_name=opponent.name,
-            target_positions=[response["card_idx"]], duration_ms=1500))
+            target_positions=[response["card_idx"]], duration_ms=2500))
         return opponent, card
 
     def specify_swap(self, _round: Round) -> Tuple[Type[P], int, int]:
@@ -465,11 +486,13 @@ class WebPlayer(Player):
               f"with {opponent.name}'s card (pos {response['opp_card_idx']}).")
         self._broadcast_action(
             "swap", f"{self.name} swapped a card with {opponent.name}")
-        self._broadcast_animation(AnimationEvent(
+        anim = AnimationEvent(
             animation_type="swap", player_name=self.name,
             target_player_name=opponent.name,
             card_positions=[response["own_card_idx"]],
-            target_positions=[response["opp_card_idx"]], duration_ms=1500))
+            target_positions=[response["opp_card_idx"]], duration_ms=2000)
+        self._emit_self_animation(anim)
+        self._broadcast_animation(anim)
         return opponent, response["own_card_idx"], response["opp_card_idx"]
 
     def report_known_cards_on_hand(self) -> None:
@@ -544,6 +567,29 @@ class WebPlayer(Player):
                 revealed_cards.append({
                     "owner": owner.name, "position": card_position, "value": card.value,
                 })
+
+        # Emit self-animation for peek/spy before showing the reveal dialog
+        if effect == "PEAK":
+            try:
+                card_position = self.hand.index(card)
+            except ValueError:
+                card_position = 0
+            self._emit_self_animation(AnimationEvent(
+                animation_type="peek", player_name=self.name,
+                card_value=card.value, card_positions=[card_position],
+                duration_ms=2500))
+        else:  # SPY
+            owner = card.owner
+            if owner:
+                try:
+                    card_position = owner.hand.index(card)
+                except ValueError:
+                    card_position = 0
+                self._emit_self_animation(AnimationEvent(
+                    animation_type="spy", player_name=self.name,
+                    target_player_name=owner.name,
+                    card_value=card.value,
+                    target_positions=[card_position], duration_ms=2500))
 
         # Action panel always shows the actual card value for the viewing player
         state = self._build_state_snapshot(self._current_round)

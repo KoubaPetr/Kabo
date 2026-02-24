@@ -51,9 +51,9 @@ class AnimationAwareComputerPlayer(ComputerPlayer):
         self._emit_animation(AnimationEvent(
             animation_type="draw_deck",
             player_name=self.name,
-            duration_ms=800,
+            duration_ms=1500,
         ))
-        self._sleep_for(1000)
+        self._sleep_for(1700)
         self._broadcast_state()
 
         decision_on_card = self.decide_on_card_use(_drawn_card)
@@ -67,9 +67,9 @@ class AnimationAwareComputerPlayer(ComputerPlayer):
                 player_name=self.name,
                 card_value=_drawn_card.value,
                 discard_top_value=_drawn_card.value,
-                duration_ms=600,
+                duration_ms=1200,
             ))
-            self._sleep_for(800)
+            self._sleep_for(1400)
             self._broadcast_state()
         elif decision_on_card == "EFFECT":
             _round.discard_card(_drawn_card)
@@ -78,9 +78,9 @@ class AnimationAwareComputerPlayer(ComputerPlayer):
                 player_name=self.name,
                 card_value=_drawn_card.value,
                 discard_top_value=_drawn_card.value,
-                duration_ms=600,
+                duration_ms=1200,
             ))
-            self._sleep_for(800)
+            self._sleep_for(1400)
             self._broadcast_state()
 
             effect_to_function = {
@@ -105,9 +105,9 @@ class AnimationAwareComputerPlayer(ComputerPlayer):
             animation_type="draw_discard",
             player_name=self.name,
             card_value=discard_val,
-            duration_ms=800,
+            duration_ms=1500,
         ))
-        self._sleep_for(1000)
+        self._sleep_for(1700)
         self._broadcast_state()
 
         self.keep_drawn_card(_top_discarded_card, _round)
@@ -118,9 +118,9 @@ class AnimationAwareComputerPlayer(ComputerPlayer):
         self._emit_animation(AnimationEvent(
             animation_type="exchange",
             player_name=self.name,
-            duration_ms=600,
+            duration_ms=1500,
         ))
-        self._sleep_for(800)
+        self._sleep_for(1700)
         self._broadcast_state()
 
     def call_kabo(self, _round: Round) -> None:
@@ -128,9 +128,9 @@ class AnimationAwareComputerPlayer(ComputerPlayer):
         self._emit_animation(AnimationEvent(
             animation_type="kabo_call",
             player_name=self.name,
-            duration_ms=2000,
+            duration_ms=3000,
         ))
-        self._sleep_for(2500)
+        self._sleep_for(3500)
 
     def _animated_peak(self) -> None:
         card_idx_to_be_seen = self.pick_cards_to_see(num_cards_to_see=1)
@@ -141,9 +141,9 @@ class AnimationAwareComputerPlayer(ComputerPlayer):
             animation_type="peek",
             player_name=self.name,
             card_positions=card_idx_to_be_seen,
-            duration_ms=1200,
+            duration_ms=2500,
         ))
-        self._sleep_for(1500)
+        self._sleep_for(2700)
         self._broadcast_state()
 
     def _animated_spy(self, _round: Round) -> None:
@@ -161,9 +161,9 @@ class AnimationAwareComputerPlayer(ComputerPlayer):
             player_name=self.name,
             target_player_name=spied_opponent.name,
             target_positions=[card_pos],
-            duration_ms=1500,
+            duration_ms=2500,
         ))
-        self._sleep_for(2000)
+        self._sleep_for(2700)
         self._broadcast_state()
 
     def _animated_swap(self, _round: Round) -> None:
@@ -187,9 +187,9 @@ class AnimationAwareComputerPlayer(ComputerPlayer):
             target_player_name=opponent.name,
             card_positions=[own_card_idx],
             target_positions=[opponents_card_idx],
-            duration_ms=1500,
+            duration_ms=2000,
         ))
-        self._sleep_for(2000)
+        self._sleep_for(2200)
         self._broadcast_state()
 
     def tell_player_card_value(self, card: Card, effect: str) -> None:
